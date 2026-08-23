@@ -5,7 +5,7 @@ owner's financial data through a provider adapter, preserves normalized history 
 and exposes deterministic analytics to an authenticated web application and a read-only MCP
 server.
 
-**Phases 0 and 1 are complete, and Phase 2 is in progress through PF-021:**
+**Phases 0 and 1 are complete, and Phase 2 is in progress through PF-022:**
 
 - **PF-001** established the monorepo and application/package foundations.
 - **PF-002** added validated application environments and production safety constraints.
@@ -38,12 +38,16 @@ server.
 - **PF-021** added provider-neutral account-aware direction/role classification and separate
   count-once spending/cash-flow effects for purchases, refunds, fees, transfers, card payments,
   evidence children, exclusions, unresolved credits, and mixed currencies.
+- **PF-022** added strict provider-neutral runtime contracts for connection lifecycle, accounts,
+  signed transactions, nullable enrichment, credit-card metadata, bills and their payment/finance-
+  charge evidence, plus cursor pages and the provider interface.
 
 PF-003 through PF-006 are architecture-documentation milestones; executable implementation now
-extends through PF-021's complete database foundation and initial deterministic domain policy. The
-repository intentionally contains no rule evaluator, analytics service, general financial-data
+extends through PF-022's database foundation, initial deterministic domain policy, and validated
+provider boundary. The repository intentionally contains no rule evaluator, analytics service,
+general financial-data
 repositories, provider API integration, queue worker implementation, authentication implementation,
-product UI, or production secrets. The next ticket is **PF-022: provider-neutral contracts**.
+product UI, or production secrets. The next ticket is **PF-023: Pluggy auth client**.
 
 The accepted decisions are indexed in [`docs/adr/`](docs/adr/README.md). In particular, ADRs 0008
 through 0010 are the implementation contracts for credential boundaries, workspace integrity, and

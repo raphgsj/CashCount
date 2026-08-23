@@ -297,16 +297,17 @@ describe('repository foundation', () => {
     const adrIndex = readFileSync(join(repositoryRoot, 'docs', 'adr', 'README.md'), 'utf8');
 
     expect(readme).toContain(
-      '**Phases 0 and 1 are complete, and Phase 2 is in progress through PF-021:**',
+      '**Phases 0 and 1 are complete, and Phase 2 is in progress through PF-022:**',
     );
-    expect(readme).toContain('**PF-022: provider-neutral contracts**');
+    expect(readme).toContain('**PF-023: Pluggy auth client**');
     expect(readme).toContain('configuration-validated shell; future Next.js web application');
     expect(agentInstructions).toContain('## Current implementation state');
     expect(agentInstructions).toContain('Phase 0 is complete: PF-001 through PF-006.');
     expect(agentInstructions).toContain('Phase 1 is complete: PF-010 through PF-019');
     expect(agentInstructions).toContain('PF-020 starts Phase 2');
     expect(agentInstructions).toContain('PF-021 adds account-aware direction/role classification');
-    expect(agentInstructions).toContain('The next ticket is PF-022');
+    expect(agentInstructions).toContain('PF-022 adds strict provider-neutral runtime contracts');
+    expect(agentInstructions).toContain('The next ticket is PF-023');
     expect(agentInstructions).toContain('Update this section and the root README together');
     expect(adrIndex).toContain('These records complete the');
     expect(adrIndex).toContain('Phase 0 decision backlog');

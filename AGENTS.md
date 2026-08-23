@@ -26,7 +26,9 @@ record; the versioned implementation plan is the canonical specification.
   evidence, strict bank dates/bill months, and arbitrary-IANA-timezone local-date derivation.
 - PF-021 adds account-aware direction/role classification and separate, count-once spending and
   deposit cash-flow effects with mixed-currency/unresolved-evidence warnings.
-- The next ticket is PF-022, which defines provider-neutral runtime contracts. Do not
+- PF-022 adds strict provider-neutral runtime contracts for lifecycle, accounts, signed amounts,
+  nullable enrichment, credit-card metadata, bill children, cursor pages, and the provider interface.
+- The next ticket is PF-023, which implements the Pluggy authentication client. Do not
   imply that provider
   integration, queue worker behavior, authentication implementation, rule evaluation, financial
   policy or analytics services, repositories, or product UI already exist.
