@@ -114,4 +114,32 @@ describe('repository foundation', () => {
     expect(record).toContain('getTransactionById(workspaceId, transactionId)');
     expect(record).toContain('cross-workspace category assignment fails');
   });
+
+  it('records the complete provider-identity and bill-semantics decision', () => {
+    const record = readFileSync(
+      join(repositoryRoot, 'docs', 'adr', '0010-provider-identity-and-bill-semantics.md'),
+      'utf8',
+    );
+
+    expect(record).toContain('- **Tickets:** PF-003; expanded by PF-006');
+    expect(record).toContain('## Identity layers');
+    expect(record).toContain('## Provider-ID lifecycle and replacement');
+    expect(record).toContain('## Signed amount and financial-role policy');
+    expect(record).toContain('## Bill child entities');
+    expect(record).toContain('## Economic-event reconciliation');
+    expect(record).toContain('## Verification matrix');
+    expect(record).toContain('The initial auto-confirm threshold is `>= 0.95`');
+    expect(record).toContain('Unresolved negative card entry');
+    expect(record).toContain('provider synchronization never writes `transaction_user_state`');
+  });
+
+  it('records Phase 0 completion and the next implementation ticket', () => {
+    const readme = readFileSync(join(repositoryRoot, 'README.md'), 'utf8');
+    const adrIndex = readFileSync(join(repositoryRoot, 'docs', 'adr', 'README.md'), 'utf8');
+
+    expect(readme).toContain('**Phase 0 is complete (PF-001 through PF-006):**');
+    expect(readme).toContain('**PF-010: local PostgreSQL**');
+    expect(adrIndex).toContain('These records complete the');
+    expect(adrIndex).toContain('Phase 0 decision backlog');
+  });
 });

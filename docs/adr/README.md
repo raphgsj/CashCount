@@ -21,5 +21,6 @@ do not silently erase the original reasoning.
 PF-003 established all ten baseline decisions. PF-004 expanded ADR 0008 with the concrete credential
 storage, authorization, rotation, and MCP data-path model. PF-005 expanded ADR 0009 with provider
 uniqueness, composite relationship, category visibility, repository-scope, and verification
-contracts. PF-006 will deepen ADR 0010 without changing its accepted direction unless a later record
-says so.
+contracts. PF-006 expanded ADR 0010 with provider-ID lifecycle, continuity scoring, signed-card,
+bill-child, economic-event reconciliation, and verification contracts. These records complete the
+Phase 0 decision backlog; a later material change requires a superseding or explicitly amended ADR.

@@ -5,9 +5,19 @@ owner's financial data through a provider adapter, preserves normalized history 
 and exposes deterministic analytics to an authenticated web application and a read-only MCP
 server.
 
-The repository is currently complete through **PF-002: environment validation**. It intentionally
-contains no financial logic, database schema, provider integration, authentication implementation,
-or production secrets.
+**Phase 0 is complete (PF-001 through PF-006):**
+
+- **PF-001** established the monorepo and application/package foundations.
+- **PF-002** added validated application environments and production safety constraints.
+- **PF-003** recorded the baseline architecture decisions in `docs/adr/`.
+- **PF-004** defined credential storage, authorization boundaries, and rotation procedures.
+- **PF-005** defined workspace integrity, category visibility, and repository scoping.
+- **PF-006** defined provider-ID continuity, signed card semantics, and bill reconciliation.
+
+PF-003 through PF-006 are architecture-documentation milestones; executable implementation currently
+extends through PF-002. The repository intentionally contains no financial logic, database schema,
+provider integration, authentication implementation, or production secrets. Phase 1 starts with
+**PF-010: local PostgreSQL**.
 
 ## Prerequisites
 
