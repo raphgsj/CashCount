@@ -1,0 +1,43 @@
+{
+  "name": "cashcount",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Private personal-finance intelligence platform.",
+  "license": "UNLICENSED",
+  "type": "module",
+  "packageManager": "pnpm@11.22.0",
+  "engines": {
+    "node": "24.19.0",
+    "pnpm": "11.22.0"
+  },
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "build": "turbo run build",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:integration": "turbo run test:integration",
+    "test:e2e": "turbo run test:e2e",
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "db:generate": "pnpm --filter @cashcount/db db:generate",
+    "db:migrate": "pnpm --filter @cashcount/db db:migrate",
+    "db:seed": "pnpm --filter @cashcount/db db:seed",
+    "sync:discover": "pnpm --filter @cashcount/worker sync:discover",
+    "sync:full": "pnpm --filter @cashcount/worker sync:full",
+    "sync:reconcile": "pnpm --filter @cashcount/worker sync:reconcile",
+    "mcp:inspect": "pnpm --filter @cashcount/mcp inspect"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@types/node": "24.13.3",
+    "eslint": "10.9.0",
+    "prettier": "3.9.6",
+    "tsx": "4.23.12",
+    "turbo": "2.10.11",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.67.0",
+    "vitest": "4.1.11"
+  }
+}

@@ -1,0 +1,10 @@
+node_modules
+dist
+.next
+.turbo
+coverage
+playwright-report
+test-results
+pnpm-lock.yaml
+personal-finance-platform-implementation-plan.md
+personal-finance-platform-required-amendments.md
