@@ -4,6 +4,18 @@ Read `personal-finance-platform-implementation-plan.md` and the relevant ADRs be
 code. `personal-finance-platform-required-amendments.md` is retained as the incorporated decision
 record; the versioned implementation plan is the canonical specification.
 
+## Current implementation state
+
+- Phase 0 is complete: PF-001 through PF-006.
+- Executable application behavior is complete through PF-002; PF-003 through PF-006 are accepted
+  architecture and integrity contracts for later implementation.
+- The next ticket is PF-010, which introduces local PostgreSQL. Do not imply that a database schema,
+  provider integration, authentication implementation, financial logic, or product UI already
+  exists.
+- ADRs 0008, 0009, and 0010 define mandatory credential, workspace, provider-identity, signed-amount,
+  and bill-reconciliation behavior for subsequent tickets.
+- Update this section and the root README together whenever a PF ticket or phase is completed.
+
 ## Non-negotiable rules
 
 - PostgreSQL is the source of truth.
@@ -38,9 +50,12 @@ record; the versioned implementation plan is the canonical specification.
 ## Work process
 
 1. Implement one PF ticket at a time.
-2. Restate its acceptance criteria before coding.
+2. Confirm the current implementation boundary in `README.md`, then restate the selected ticket's
+   acceptance criteria before coding.
 3. Make the smallest coherent change.
 4. Add tests before or with implementation.
 5. Run format, lint, typecheck, relevant tests, and build.
-6. Summarize changed files, commands, exact results, and remaining risks.
-7. Stop when the selected ticket is complete; do not start the next phase automatically.
+6. Update `README.md` and this file when the completed ticket changes the documented implementation
+   boundary or next-ticket pointer.
+7. Summarize changed files, commands, exact results, and remaining risks.
+8. Stop when the selected ticket is complete; do not start the next ticket or phase automatically.

@@ -135,10 +135,16 @@ describe('repository foundation', () => {
 
   it('records Phase 0 completion and the next implementation ticket', () => {
     const readme = readFileSync(join(repositoryRoot, 'README.md'), 'utf8');
+    const agentInstructions = readFileSync(join(repositoryRoot, 'AGENTS.md'), 'utf8');
     const adrIndex = readFileSync(join(repositoryRoot, 'docs', 'adr', 'README.md'), 'utf8');
 
     expect(readme).toContain('**Phase 0 is complete (PF-001 through PF-006):**');
     expect(readme).toContain('**PF-010: local PostgreSQL**');
+    expect(readme).toContain('configuration-validated shell; future Next.js web application');
+    expect(agentInstructions).toContain('## Current implementation state');
+    expect(agentInstructions).toContain('Phase 0 is complete: PF-001 through PF-006.');
+    expect(agentInstructions).toContain('The next ticket is PF-010');
+    expect(agentInstructions).toContain('Update this section and the root README together');
     expect(adrIndex).toContain('These records complete the');
     expect(adrIndex).toContain('Phase 0 decision backlog');
   });

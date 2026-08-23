@@ -19,13 +19,17 @@ extends through PF-002. The repository intentionally contains no financial logic
 provider integration, authentication implementation, or production secrets. Phase 1 starts with
 **PF-010: local PostgreSQL**.
 
+The accepted decisions are indexed in [`docs/adr/`](docs/adr/README.md). In particular, ADRs 0008
+through 0010 are the implementation contracts for credential boundaries, workspace integrity, and
+provider identity/bill semantics during later phases.
+
 ## Prerequisites
 
 - Node.js `24.19.0`
 - pnpm `11.22.0` through Corepack
 - Git
 
-Docker is not required until PF-010 introduces local PostgreSQL.
+Docker is required for PF-010 and the database integration tests introduced during Phase 1.
 
 ## Setup
 
@@ -47,21 +51,21 @@ credential reuse wherever both trust-boundary values are visible to the process.
 
 ```text
 apps/
-  web/        future Next.js web application
-  api/        future Fastify Finance API
-  worker/     future durable background worker
-  mcp/        future read-only MCP service
+  web/        configuration-validated shell; future Next.js web application
+  api/        configuration-validated shell; future Fastify Finance API
+  worker/     configuration-validated shell; future durable background worker
+  mcp/        configuration-validated shell; future read-only MCP service
 packages/
   config/     validated environment and shared configuration
-  contracts/  runtime schemas and public types
-  db/         Drizzle schema, migrations, and repositories
-  domain/     provider-neutral financial policy
-  provider-core/
-  provider-pluggy/
-  classification/
-  analytics/
-  observability/
-  test-fixtures/
+  contracts/  shell for future runtime schemas and public types
+  db/         shell for future Drizzle schema, migrations, and repositories
+  domain/     shell for future provider-neutral financial policy
+  provider-core/    provider-neutral adapter shell
+  provider-pluggy/  Pluggy adapter shell
+  classification/   classification shell
+  analytics/        deterministic analytics shell
+  observability/    logging and metrics shell
+  test-fixtures/    repository/configuration regression tests
 ```
 
 ## Quality commands
