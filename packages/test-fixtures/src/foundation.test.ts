@@ -109,9 +109,13 @@ describe('repository foundation', () => {
     }
   });
 
-  it('defines the PF-015 intelligence schema boundary', () => {
+  it('defines the PF-016 database and view boundary', () => {
     const schema = readFileSync(join(repositoryRoot, 'packages', 'db', 'src', 'schema.ts'), 'utf8');
     const seed = readFileSync(join(repositoryRoot, 'packages', 'db', 'src', 'seed.ts'), 'utf8');
+    const viewsMigration = readFileSync(
+      join(repositoryRoot, 'packages', 'db', 'drizzle', '0005_initial_views.sql'),
+      'utf8',
+    );
 
     expect(schema).toContain("'app_user'");
     expect(schema).toContain("'workspace'");
@@ -145,6 +149,23 @@ describe('repository foundation', () => {
     expect(schema).toContain("'transaction_tag'");
     expect(schema).toContain("'audit_event'");
     expect(schema).toContain('financial_transaction_workspace_installment_series_fk');
+    for (const view of [
+      'v_financial_transaction_effective',
+      'v_transaction_spend_effect',
+      'v_transaction_cashflow_effect',
+      'v_credit_card_bill_reconciliation',
+      'v_account_history_coverage',
+      'v_transactions_needing_review',
+      'v_transaction_replacement_review',
+      'v_monthly_spend_by_category',
+      'v_monthly_spend_by_merchant',
+      'v_installment_commitments',
+      'v_account_data_freshness',
+      'v_unclassified_transactions',
+    ]) {
+      expect(viewsMigration).toContain(`CREATE VIEW "${view}"`);
+    }
+    expect(viewsMigration).not.toContain('MATERIALIZED VIEW');
     expect(seed).toContain('owner@example.test');
     expect(seed).toContain('Synthetic Personal Finance');
   });
@@ -216,14 +237,14 @@ describe('repository foundation', () => {
     const adrIndex = readFileSync(join(repositoryRoot, 'docs', 'adr', 'README.md'), 'utf8');
 
     expect(readme).toContain(
-      '**Phase 0 is complete (PF-001 through PF-006), and Phase 1 is in progress through PF-015:**',
+      '**Phase 0 is complete (PF-001 through PF-006), and Phase 1 is in progress through PF-016:**',
     );
-    expect(readme).toContain('**PF-016: initial views and indexes**');
+    expect(readme).toContain('**PF-017: cross-workspace integrity constraints**');
     expect(readme).toContain('configuration-validated shell; future Next.js web application');
     expect(agentInstructions).toContain('## Current implementation state');
     expect(agentInstructions).toContain('Phase 0 is complete: PF-001 through PF-006.');
-    expect(agentInstructions).toContain('PF-010 through PF-015 are complete');
-    expect(agentInstructions).toContain('The next ticket is PF-016');
+    expect(agentInstructions).toContain('PF-010 through PF-016 are complete');
+    expect(agentInstructions).toContain('The next ticket is PF-017');
     expect(agentInstructions).toContain('Update this section and the root README together');
     expect(adrIndex).toContain('These records complete the');
     expect(adrIndex).toContain('Phase 0 decision backlog');

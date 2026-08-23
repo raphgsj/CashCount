@@ -6,9 +6,12 @@ adds `provider_connection`, encrypted `provider_raw_object` evidence, the worksp
 `webhook_event` inbox, lease-ready `job_queue`, and `sync_run`. PF-014 adds accounts and history
 coverage, credit-card bills and reconciliation evidence, categories and merchants, exact-numeric
 provider/system transactions, separately owned transaction state, provider-identity continuity, and
-transaction revisions. Repositories, provider integration, queue execution, financial policy,
-effective/analytics views, and product behavior remain future work. PF-015 adds classification
-rules/decisions, installment and recurring series, transaction tags, and bounded audit events.
+transaction revisions. Repositories, provider integration, queue execution, financial policy, and
+product behavior remain future work. PF-015 adds classification rules/decisions, installment and
+recurring series, transaction tags, and bounded audit events. PF-016 adds 12 normal views rooted in
+the canonical effective transaction and supporting review/reconciliation indexes. The views preserve
+explicit user-null overrides, keep incompatible currencies out of totals, distinguish spending from
+deposit-account cash flow, and expose unresolved evidence instead of fabricating transactions.
 
 From the repository root:
 
@@ -27,12 +30,15 @@ requires `DATABASE_URL` and rejects `LOCAL_DATABASE_URL`.
 uses reserved example data and refuses to run when `NODE_ENV=production`.
 
 The integration tests create uniquely named empty databases, apply the complete migration set twice,
-verify constraints and the synthetic seed, exercise PF-011 through PF-014 upgrade paths, and prove
+verify constraints and the synthetic seed, exercise PF-011 through PF-015 upgrade paths, and prove
 provider identity scope, cross-workspace rejection, encrypted-envelope checks, webhook idempotency,
 active queue dedupe, lease-state constraints, category visibility/immutability, exact numeric
 round-trips, transaction continuity, bill reconciliation account roles, intelligence evaluation
 idempotency, series scope, tag scope, and bounded audit records. Each temporary database is dropped
-afterward. The database user running this CI-only test must be allowed to create and drop databases.
+afterward. They also verify effective override/provenance behavior, currency-safe spend/cash-flow
+effects, reconciliation warnings, history/freshness, review queues, monthly summaries, and
+installment commitments. The database user running this CI-only test must be allowed to create and
+drop databases.
 
 PF-015 replaces PF-014's temporary null-only series guard with composite workspace foreign keys to
 the installment and recurring parents.

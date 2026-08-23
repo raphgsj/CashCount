@@ -5,7 +5,7 @@ owner's financial data through a provider adapter, preserves normalized history 
 and exposes deterministic analytics to an authenticated web application and a read-only MCP
 server.
 
-**Phase 0 is complete (PF-001 through PF-006), and Phase 1 is in progress through PF-015:**
+**Phase 0 is complete (PF-001 through PF-006), and Phase 1 is in progress through PF-016:**
 
 - **PF-001** established the monorepo and application/package foundations.
 - **PF-002** added validated application environments and production safety constraints.
@@ -22,13 +22,16 @@ server.
   reconciliation evidence, categories/merchants, transactions, user state, continuity, and revisions.
 - **PF-015** added rules/decisions, installment and recurring series, transaction tags, and bounded
   audit events with workspace-enforced relationships.
+- **PF-016** added canonical effective-transaction, spend/cash-flow, bill reconciliation,
+  history/freshness, review, monthly-summary, and installment-commitment database views plus their
+  supporting indexes.
 
 PF-003 through PF-006 are architecture-documentation milestones; executable implementation now
-extends through PF-015's identity, workspace, provider/synchronization, financial-core, and
-intelligence database foundation. The repository intentionally contains no rule evaluator,
-financial policy implementation, analytics or effective views, repositories, provider API
-integration, queue worker implementation, authentication implementation, product UI, or production
-secrets. The next ticket is **PF-016: initial views and indexes**.
+extends through PF-016's identity, workspace, provider/synchronization, financial-core,
+intelligence, and initial query-view database foundation. The repository intentionally contains no
+rule evaluator, domain financial-policy implementation, analytics service, repositories, provider
+API integration, queue worker implementation, authentication implementation, product UI, or
+production secrets. The next ticket is **PF-017: cross-workspace integrity constraints**.
 
 The accepted decisions are indexed in [`docs/adr/`](docs/adr/README.md). In particular, ADRs 0008
 through 0010 are the implementation contracts for credential boundaries, workspace integrity, and
@@ -92,7 +95,7 @@ apps/
 packages/
   config/     validated environment and shared configuration
   contracts/  shell for future runtime schemas and public types
-  db/         Drizzle identity, provider/sync, financial, and intelligence schema; future repositories
+  db/         Drizzle schema, migrations, and canonical financial query views; future repositories
   domain/     shell for future provider-neutral financial policy
   provider-core/    provider-neutral adapter shell
   provider-pluggy/  Pluggy adapter shell

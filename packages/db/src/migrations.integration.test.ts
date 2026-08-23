@@ -148,13 +148,25 @@ describe('database migrations', () => {
             client,
             'select count(*)::integer as count from drizzle.__drizzle_migrations',
           ),
-        ).toBe(5);
+        ).toBe(6);
         expect(
           await queryCount(
             client,
             "select count(*)::integer as count from pg_tables where schemaname = 'public'",
           ),
         ).toBe(27);
+        expect(
+          await queryCount(
+            client,
+            "select count(*)::integer as count from information_schema.views where table_schema = 'public' and table_name like 'v_%'",
+          ),
+        ).toBe(12);
+        expect(
+          await queryCount(
+            client,
+            "select count(*)::integer as count from pg_indexes where schemaname = 'public' and indexname in ('transaction_user_state_workspace_review_idx', 'transaction_identity_link_workspace_review_idx', 'bill_payment_reconciliation_workspace_status_idx', 'installment_series_workspace_status_idx', 'recurring_series_workspace_status_next_idx')",
+          ),
+        ).toBe(5);
         expect(
           await queryCount(
             client,
@@ -930,11 +942,327 @@ describe('database migrations', () => {
     });
   }, 30_000);
 
+  it('applies effective overrides and exposes currency-safe financial views', async () => {
+    await withTemporaryDatabase(async (connectionString) => {
+      await runMigrations(connectionString);
+      await seedSyntheticIdentity(connectionString, 'test');
+
+      const client = new Client({ connectionString });
+      const workspaceId = syntheticIdentitySeed.workspace.id;
+      const connectionId = '40000000-0000-4000-8000-000000000010';
+      const checkingAccountId = '50000000-0000-4000-8000-000000000010';
+      const cardAccountId = '50000000-0000-4000-8000-000000000011';
+      const categoryId = '80000000-0000-4000-8000-000000000010';
+      const merchantId = '90000000-0000-4000-8000-000000000010';
+      const purchaseId = 'a0000000-0000-4000-8000-000000000010';
+      const refundId = 'a0000000-0000-4000-8000-000000000011';
+      const billPurchaseId = 'a0000000-0000-4000-8000-000000000012';
+      const billPaymentId = 'a0000000-0000-4000-8000-000000000013';
+      const mixedCurrencyId = 'a0000000-0000-4000-8000-000000000014';
+      const billId = '60000000-0000-4000-8000-000000000010';
+      const paymentEvidenceId = '61000000-0000-4000-8000-000000000010';
+      const installmentSeriesId = '62000000-0000-4000-8000-000000000010';
+
+      try {
+        await client.connect();
+        await client.query(
+          `insert into provider_connection (
+            id, workspace_id, provider, external_connection_id, external_connector_id,
+            display_name, last_successful_sync_at
+          ) values ($1, $2, 'PLUGGY', 'views-item', 'views-connector', 'Views Connection', now())`,
+          [connectionId, workspaceId],
+        );
+        await client.query(
+          `insert into financial_account (
+            id, workspace_id, provider_connection_id, provider, external_account_id,
+            account_type, name, institution_name, currency, last_successful_sync_at,
+            provider_history_earliest_date, provider_history_latest_date,
+            initial_import_completed_at, history_coverage_status
+          ) values
+            ($1, $2, $3, 'PLUGGY', 'views-checking', 'CHECKING', 'Checking',
+              'Synthetic Bank', 'BRL', now(), '2026-01-01', '2026-08-20', now(),
+              'PROVIDER_MAXIMUM_RETRIEVED'),
+            ($4, $2, $3, 'PLUGGY', 'views-card', 'CREDIT_CARD', 'Card',
+              'Synthetic Bank', 'BRL', now(), '2026-01-01', '2026-08-20', now(),
+              'PROVIDER_MAXIMUM_RETRIEVED')`,
+          [checkingAccountId, workspaceId, connectionId, cardAccountId],
+        );
+        await client.query(
+          `insert into category (id, workspace_id, code, kind, name_en, name_pt_br)
+           values ($1, $2, 'custom.80000000-0000-4000-8000-000000000010',
+             'EXPENSE', 'Views Category', 'Categoria de Views')`,
+          [categoryId, workspaceId],
+        );
+        await client.query(
+          `insert into merchant (id, workspace_id, canonical_name, normalized_key)
+           values ($1, $2, 'Views Merchant', 'views-merchant')`,
+          [merchantId, workspaceId],
+        );
+        await client.query(
+          `insert into credit_card_bill (
+            id, workspace_id, financial_account_id, provider, external_bill_id,
+            status, total_amount, currency
+          ) values ($1, $2, $3, 'PLUGGY', 'views-bill', 'CLOSED', '100.000000', 'BRL')`,
+          [billId, workspaceId, cardAccountId],
+        );
+
+        await insertSyntheticTransaction(client, {
+          accountId: checkingAccountId,
+          categoryId,
+          id: purchaseId,
+          merchantId,
+          providerTransactionId: 'views-purchase',
+          workspaceId,
+        });
+        await insertSyntheticTransaction(client, {
+          accountId: cardAccountId,
+          categoryId,
+          id: refundId,
+          providerTransactionId: 'views-refund',
+          workspaceId,
+        });
+        await insertSyntheticTransaction(client, {
+          accountId: cardAccountId,
+          billId,
+          categoryId,
+          id: billPurchaseId,
+          merchantId,
+          providerTransactionId: 'views-bill-purchase',
+          workspaceId,
+        });
+        await insertSyntheticTransaction(client, {
+          accountId: checkingAccountId,
+          id: billPaymentId,
+          providerTransactionId: 'views-bill-payment',
+          workspaceId,
+        });
+        await insertSyntheticTransaction(client, {
+          accountId: cardAccountId,
+          categoryId,
+          id: mixedCurrencyId,
+          merchantId,
+          providerTransactionId: 'views-mixed-currency',
+          workspaceId,
+        });
+
+        await client.query(
+          `update financial_transaction
+           set provider_amount_signed = case id
+             when $1 then '-100.000000'::numeric
+             when $2 then '-20.000000'::numeric
+             when $3 then '100.000000'::numeric
+             when $4 then '-500.000000'::numeric
+             else '30.000000'::numeric
+           end,
+           provider_currency = case when id = $5 then 'USD' else 'BRL' end,
+           system_direction = case
+             when id = $2 then 'INFLOW'
+             when id = $5 then 'OUTFLOW'
+             else 'OUTFLOW'
+           end,
+           system_financial_role = case
+             when id = $2 then 'REFUND'
+             when id = $4 then 'CARD_BILL_PAYMENT'
+             else 'PURCHASE'
+           end,
+           system_is_excluded_from_spend = (id = $4),
+           system_category_source = case when system_category_id is null then 'NONE' else 'RULE' end,
+           system_merchant_source = case when system_merchant_id is null then 'NONE' else 'MERCHANT' end,
+           system_financial_role_source = 'HEURISTIC',
+           system_exclusion_source = 'HEURISTIC'
+           where id in ($1, $2, $3, $4, $5)`,
+          [purchaseId, refundId, billPurchaseId, billPaymentId, mixedCurrencyId],
+        );
+        await client.query(
+          `insert into transaction_user_state (
+            financial_transaction_id, workspace_id, category_override_enabled,
+            financial_role_override_enabled, financial_role_override, review_status,
+            updated_by_actor_type
+          ) values ($1, $2, true, true, 'REFUND', 'NEEDS_REVIEW', 'USER')`,
+          [refundId, workspaceId],
+        );
+        await client.query(
+          `insert into installment_series (
+            id, workspace_id, financial_account_id, merchant_id, currency,
+            total_installments, highest_confirmed_installment,
+            estimated_installment_amount, original_total_amount, status
+          ) values ($1, $2, $3, $4, 'BRL', 3, 1, '100.000000', '300.000000', 'CONFIRMED')`,
+          [installmentSeriesId, workspaceId, cardAccountId, merchantId],
+        );
+        await client.query(
+          'update financial_transaction set installment_series_id = $1 where id = $2',
+          [installmentSeriesId, billPurchaseId],
+        );
+        await client.query(
+          `insert into credit_card_bill_payment (
+            id, workspace_id, credit_card_bill_id, provider, external_payment_id,
+            value_type, payment_date, amount, currency
+          ) values ($1, $2, $3, 'PLUGGY', 'views-payment', 'PAID', '2026-08-20',
+            '500.000000', 'BRL')`,
+          [paymentEvidenceId, workspaceId, billId],
+        );
+        await client.query(
+          `insert into credit_card_bill_finance_charge (
+            workspace_id, credit_card_bill_id, provider, external_charge_id,
+            charge_type, amount, currency
+          ) values ($1, $2, 'PLUGGY', 'views-charge', 'INTEREST', '5.000000', 'BRL')`,
+          [workspaceId, billId],
+        );
+        await client.query(
+          `insert into bill_payment_reconciliation (
+            workspace_id, credit_card_bill_payment_id, financial_transaction_id,
+            match_status, match_method, confidence, matched_at
+          ) values ($1, $2, $3, 'AUTO_MATCHED', 'AMOUNT_DATE', '0.9900', now())`,
+          [workspaceId, paymentEvidenceId, billPaymentId],
+        );
+        await client.query(
+          `insert into transaction_identity_link (
+            workspace_id, predecessor_transaction_id, successor_transaction_id,
+            status, confidence
+          ) values ($1, $2, $3, 'NEEDS_REVIEW', '0.8000')`,
+          [workspaceId, purchaseId, refundId],
+        );
+
+        const effectiveRefund = await client.query<{
+          analytics_amount_signed: string;
+          effective_category_id: string | null;
+          effective_category_source: string;
+          effective_financial_role: string;
+        }>(
+          `select analytics_amount_signed, effective_category_id,
+             effective_category_source, effective_financial_role
+           from v_financial_transaction_effective where id = $1`,
+          [refundId],
+        );
+        expect(effectiveRefund.rows[0]).toEqual({
+          analytics_amount_signed: '-20.000000',
+          effective_category_id: null,
+          effective_category_source: 'USER',
+          effective_financial_role: 'REFUND',
+        });
+
+        const effects = await client.query<{
+          cashflow_effect_amount: string | null;
+          id: string;
+          spend_effect_amount: string | null;
+        }>(
+          `select s.id, s.spend_effect_amount, c.cashflow_effect_amount
+           from v_transaction_spend_effect s
+           join v_transaction_cashflow_effect c on c.workspace_id = s.workspace_id and c.id = s.id
+           order by s.id`,
+        );
+        expect(
+          Object.fromEntries(
+            effects.rows.map((row) => [
+              row.id,
+              [row.spend_effect_amount, row.cashflow_effect_amount],
+            ]),
+          ),
+        ).toEqual({
+          [purchaseId]: ['100.000000', '-100.000000'],
+          [refundId]: ['-20.000000', '0.000000'],
+          [billPurchaseId]: ['100.000000', '0.000000'],
+          [billPaymentId]: ['0.000000', '-500.000000'],
+          [mixedCurrencyId]: [null, '0.000000'],
+        });
+
+        const categorySummary = await client.query<{
+          spend_amount: string;
+          transaction_count: string;
+          unconverted_transaction_count: string;
+        }>(
+          `select spend_amount, transaction_count, unconverted_transaction_count
+           from v_monthly_spend_by_category
+           where workspace_id = $1 and category_id = $2`,
+          [workspaceId, categoryId],
+        );
+        expect(categorySummary.rows[0]).toEqual({
+          spend_amount: '200.000000',
+          transaction_count: '2',
+          unconverted_transaction_count: '1',
+        });
+
+        const bill = await client.query<{
+          confirmed_bank_payment_total: string;
+          difference_amount: string;
+          reconciliation_status: string;
+          unresolved_item_count: string;
+        }>(
+          `select confirmed_bank_payment_total, difference_amount,
+             reconciliation_status, unresolved_item_count
+           from v_credit_card_bill_reconciliation where credit_card_bill_id = $1`,
+          [billId],
+        );
+        expect(bill.rows[0]).toEqual({
+          confirmed_bank_payment_total: '500.000000',
+          difference_amount: '0.000000',
+          reconciliation_status: 'NEEDS_REVIEW',
+          unresolved_item_count: '1',
+        });
+
+        const installment = await client.query<{
+          estimated_remaining_commitment: string;
+          posted_amount: string;
+          remaining_installments: number;
+        }>(
+          `select estimated_remaining_commitment, posted_amount, remaining_installments
+           from v_installment_commitments where installment_series_id = $1`,
+          [installmentSeriesId],
+        );
+        expect(installment.rows[0]).toEqual({
+          estimated_remaining_commitment: '200.000000',
+          posted_amount: '100.000000',
+          remaining_installments: 2,
+        });
+
+        expect(
+          await queryCount(
+            client,
+            `select count(*)::integer as count from v_unclassified_transactions where id = '${refundId}'`,
+          ),
+        ).toBe(1);
+        expect(
+          await queryCount(
+            client,
+            `select count(*)::integer as count from v_transactions_needing_review where id = '${refundId}'`,
+          ),
+        ).toBe(1);
+        expect(
+          await queryCount(
+            client,
+            'select count(*)::integer as count from v_transaction_replacement_review',
+          ),
+        ).toBe(1);
+        expect(
+          await queryCount(
+            client,
+            'select count(*)::integer as count from v_account_history_coverage',
+          ),
+        ).toBe(2);
+        expect(
+          await queryCount(
+            client,
+            'select count(*)::integer as count from v_account_data_freshness where not is_stale',
+          ),
+        ).toBe(2);
+        expect(
+          await queryCount(
+            client,
+            `select count(*)::integer as count from v_monthly_spend_by_merchant where merchant_id = '${merchantId}'`,
+          ),
+        ).toBe(1);
+      } finally {
+        await client.end();
+      }
+    });
+  }, 30_000);
+
   it.each([
     { entryCount: 1, expectedTables: 0, ticket: 'PF-011' },
     { entryCount: 2, expectedTables: 3, ticket: 'PF-012' },
     { entryCount: 3, expectedTables: 8, ticket: 'PF-013' },
     { entryCount: 4, expectedTables: 20, ticket: 'PF-014' },
+    { entryCount: 5, expectedTables: 27, ticket: 'PF-015' },
   ])(
     'upgrades a $ticket database without reapplying prior migrations',
     async ({ entryCount, expectedTables }) => {
@@ -975,13 +1303,19 @@ describe('database migrations', () => {
                 afterUpgradeClient,
                 'select count(*)::integer as count from drizzle.__drizzle_migrations',
               ),
-            ).toBe(5);
+            ).toBe(6);
             expect(
               await queryCount(
                 afterUpgradeClient,
                 "select count(*)::integer as count from pg_tables where schemaname = 'public'",
               ),
             ).toBe(27);
+            expect(
+              await queryCount(
+                afterUpgradeClient,
+                "select count(*)::integer as count from information_schema.views where table_schema = 'public' and table_name like 'v_%'",
+              ),
+            ).toBe(12);
           } finally {
             await afterUpgradeClient.end();
           }
