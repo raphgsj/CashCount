@@ -5,7 +5,7 @@ owner's financial data through a provider adapter, preserves normalized history 
 and exposes deterministic analytics to an authenticated web application and a read-only MCP
 server.
 
-**Phase 0 is complete (PF-001 through PF-006), and Phase 1 is in progress through PF-016:**
+**Phase 0 is complete (PF-001 through PF-006), and Phase 1 is in progress through PF-017:**
 
 - **PF-001** established the monorepo and application/package foundations.
 - **PF-002** added validated application environments and production safety constraints.
@@ -25,13 +25,15 @@ server.
 - **PF-016** added canonical effective-transaction, spend/cash-flow, bill reconciliation,
   history/freshness, review, monthly-summary, and installment-commitment database views plus their
   supporting indexes.
+- **PF-017** completed the PostgreSQL tenant-integrity boundary with catalog-verified composite
+  workspace keys/foreign keys and workspace-visible classification-rule category actions.
 
 PF-003 through PF-006 are architecture-documentation milestones; executable implementation now
-extends through PF-016's identity, workspace, provider/synchronization, financial-core,
+extends through PF-017's identity, workspace, provider/synchronization, financial-core,
 intelligence, and initial query-view database foundation. The repository intentionally contains no
 rule evaluator, domain financial-policy implementation, analytics service, repositories, provider
 API integration, queue worker implementation, authentication implementation, product UI, or
-production secrets. The next ticket is **PF-017: cross-workspace integrity constraints**.
+production secrets. The next ticket is **PF-018: transaction user state and effective view**.
 
 The accepted decisions are indexed in [`docs/adr/`](docs/adr/README.md). In particular, ADRs 0008
 through 0010 are the implementation contracts for credential boundaries, workspace integrity, and

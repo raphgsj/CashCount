@@ -109,11 +109,15 @@ describe('repository foundation', () => {
     }
   });
 
-  it('defines the PF-016 database and view boundary', () => {
+  it('defines the PF-017 database integrity boundary', () => {
     const schema = readFileSync(join(repositoryRoot, 'packages', 'db', 'src', 'schema.ts'), 'utf8');
     const seed = readFileSync(join(repositoryRoot, 'packages', 'db', 'src', 'seed.ts'), 'utf8');
     const viewsMigration = readFileSync(
       join(repositoryRoot, 'packages', 'db', 'drizzle', '0005_initial_views.sql'),
+      'utf8',
+    );
+    const integrityMigration = readFileSync(
+      join(repositoryRoot, 'packages', 'db', 'drizzle', '0006_workspace_integrity.sql'),
       'utf8',
     );
 
@@ -166,6 +170,8 @@ describe('repository foundation', () => {
       expect(viewsMigration).toContain(`CREATE VIEW "${view}"`);
     }
     expect(viewsMigration).not.toContain('MATERIALIZED VIEW');
+    expect(integrityMigration).toContain('cashcount_validate_classification_rule_category_action');
+    expect(integrityMigration).toContain('classification_rule_category_action_visibility_trg');
     expect(seed).toContain('owner@example.test');
     expect(seed).toContain('Synthetic Personal Finance');
   });
@@ -237,14 +243,14 @@ describe('repository foundation', () => {
     const adrIndex = readFileSync(join(repositoryRoot, 'docs', 'adr', 'README.md'), 'utf8');
 
     expect(readme).toContain(
-      '**Phase 0 is complete (PF-001 through PF-006), and Phase 1 is in progress through PF-016:**',
+      '**Phase 0 is complete (PF-001 through PF-006), and Phase 1 is in progress through PF-017:**',
     );
-    expect(readme).toContain('**PF-017: cross-workspace integrity constraints**');
+    expect(readme).toContain('**PF-018: transaction user state and effective view**');
     expect(readme).toContain('configuration-validated shell; future Next.js web application');
     expect(agentInstructions).toContain('## Current implementation state');
     expect(agentInstructions).toContain('Phase 0 is complete: PF-001 through PF-006.');
-    expect(agentInstructions).toContain('PF-010 through PF-016 are complete');
-    expect(agentInstructions).toContain('The next ticket is PF-017');
+    expect(agentInstructions).toContain('PF-010 through PF-017 are complete');
+    expect(agentInstructions).toContain('The next ticket is PF-018');
     expect(agentInstructions).toContain('Update this section and the root README together');
     expect(adrIndex).toContain('These records complete the');
     expect(adrIndex).toContain('Phase 0 decision backlog');

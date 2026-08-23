@@ -43,6 +43,13 @@
       "when": 1787529600005,
       "tag": "0005_initial_views",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1787529600006,
+      "tag": "0006_workspace_integrity",
+      "breakpoints": true
     }
   ]
 }

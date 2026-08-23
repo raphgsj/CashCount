@@ -24,6 +24,15 @@ interface MigrationJournalEntry {
   tag: string;
 }
 
+interface WorkspaceForeignKeyAuditRow {
+  child_columns: string[];
+  child_table: string;
+  constraint_name: string;
+  parent_columns: string[];
+  parent_has_workspace_candidate_key: boolean;
+  parent_table: string;
+}
+
 interface SyntheticTransactionInput {
   accountId: string;
   billId?: string;
@@ -148,7 +157,7 @@ describe('database migrations', () => {
             client,
             'select count(*)::integer as count from drizzle.__drizzle_migrations',
           ),
-        ).toBe(6);
+        ).toBe(7);
         expect(
           await queryCount(
             client,
@@ -806,6 +815,28 @@ describe('database migrations', () => {
           `insert into classification_rule (id, workspace_id, name, priority, conditions, actions, source) values ($1, $2, 'Rule A', 10, '{"all":[]}', '{"setFinancialRole":"PURCHASE"}', 'USER'), ($3, $4, 'Rule B', 10, '{"all":[]}', '{"setFinancialRole":"PURCHASE"}', 'USER')`,
           [ruleA, workspaceA, ruleB, workspaceB],
         );
+        await client.query(
+          `update classification_rule
+           set actions = jsonb_build_object('setCategoryCode', $1::text)
+           where id = $2`,
+          [`custom.${categoryA}`, ruleA],
+        );
+        await expect(
+          client.query(
+            `update classification_rule
+             set actions = jsonb_build_object('setCategoryCode', $1::text)
+             where id = $2`,
+            [`custom.${categoryB}`, ruleA],
+          ),
+        ).rejects.toMatchObject({ code: '23514' });
+        await expect(
+          client.query(
+            `update classification_rule
+             set actions = jsonb_build_object('setCategoryCode', jsonb_build_object('code', $1::text))
+             where id = $2`,
+            [`custom.${categoryA}`, ruleA],
+          ),
+        ).rejects.toMatchObject({ code: '23514' });
         await expect(
           client.query(
             `insert into classification_rule (workspace_id, name, conditions, actions, source) values ($1, 'Invalid JSON Shape', '[]', '{}', 'USER')`,
@@ -1257,12 +1288,113 @@ describe('database migrations', () => {
     });
   }, 30_000);
 
+  it('audits composite workspace foreign keys, candidate keys, and category guards', async () => {
+    await withTemporaryDatabase(async (connectionString) => {
+      await runMigrations(connectionString);
+
+      const client = new Client({ connectionString });
+
+      try {
+        await client.connect();
+        const workspaceForeignKeys = await client.query<WorkspaceForeignKeyAuditRow>(
+          `select
+             con.conname as constraint_name,
+             child.relname as child_table,
+             parent.relname as parent_table,
+             array(
+               select child_attribute.attname
+               from unnest(con.conkey) with ordinality key_column(attnum, ordinal)
+               join pg_attribute child_attribute
+                 on child_attribute.attrelid = con.conrelid
+                and child_attribute.attnum = key_column.attnum
+               order by key_column.ordinal
+             )::text[] as child_columns,
+             array(
+               select parent_attribute.attname
+               from unnest(con.confkey) with ordinality key_column(attnum, ordinal)
+               join pg_attribute parent_attribute
+                 on parent_attribute.attrelid = con.confrelid
+                and parent_attribute.attnum = key_column.attnum
+               order by key_column.ordinal
+             )::text[] as parent_columns,
+             exists (
+               select 1
+               from pg_constraint candidate
+               where candidate.conrelid = con.confrelid
+                 and candidate.contype in ('p', 'u')
+                 and array(
+                   select candidate_attribute.attname
+                   from unnest(candidate.conkey) with ordinality candidate_column(attnum, ordinal)
+                   join pg_attribute candidate_attribute
+                     on candidate_attribute.attrelid = candidate.conrelid
+                    and candidate_attribute.attnum = candidate_column.attnum
+                   order by candidate_column.ordinal
+                 ) = array['workspace_id', 'id']::name[]
+             ) as parent_has_workspace_candidate_key
+           from pg_constraint con
+           join pg_class child on child.oid = con.conrelid
+           join pg_namespace child_namespace on child_namespace.oid = child.relnamespace
+           join pg_class parent on parent.oid = con.confrelid
+           join pg_namespace parent_namespace on parent_namespace.oid = parent.relnamespace
+           where con.contype = 'f'
+             and child_namespace.nspname = 'public'
+             and parent_namespace.nspname = 'public'
+             and parent.relname not in ('workspace', 'category')
+             and exists (
+               select 1 from pg_attribute
+               where attrelid = child.oid and attname = 'workspace_id' and not attisdropped
+             )
+             and exists (
+               select 1 from pg_attribute
+               where attrelid = parent.oid and attname = 'workspace_id' and not attisdropped
+             )
+           order by child.relname, con.conname`,
+        );
+
+        expect(workspaceForeignKeys.rows).toHaveLength(34);
+        for (const foreignKey of workspaceForeignKeys.rows) {
+          expect(foreignKey.child_columns[0], foreignKey.constraint_name).toBe('workspace_id');
+          expect(foreignKey.parent_columns[0], foreignKey.constraint_name).toBe('workspace_id');
+          expect(foreignKey.parent_has_workspace_candidate_key, foreignKey.parent_table).toBe(true);
+        }
+
+        const categoryTriggers = await client.query<{ trigger_name: string }>(
+          `select distinct trigger_name
+           from information_schema.triggers
+           where trigger_schema = 'public'
+             and trigger_name in (
+               'category_scope_validate_trg',
+               'merchant_category_visibility_trg',
+               'financial_transaction_category_visibility_trg',
+               'transaction_user_state_category_visibility_trg',
+               'recurring_series_category_visibility_trg',
+               'classification_decision_category_visibility_trg',
+               'classification_rule_category_action_visibility_trg'
+             )
+           order by trigger_name`,
+        );
+        expect(categoryTriggers.rows.map(({ trigger_name }) => trigger_name)).toEqual([
+          'category_scope_validate_trg',
+          'classification_decision_category_visibility_trg',
+          'classification_rule_category_action_visibility_trg',
+          'financial_transaction_category_visibility_trg',
+          'merchant_category_visibility_trg',
+          'recurring_series_category_visibility_trg',
+          'transaction_user_state_category_visibility_trg',
+        ]);
+      } finally {
+        await client.end();
+      }
+    });
+  }, 30_000);
+
   it.each([
     { entryCount: 1, expectedTables: 0, ticket: 'PF-011' },
     { entryCount: 2, expectedTables: 3, ticket: 'PF-012' },
     { entryCount: 3, expectedTables: 8, ticket: 'PF-013' },
     { entryCount: 4, expectedTables: 20, ticket: 'PF-014' },
     { entryCount: 5, expectedTables: 27, ticket: 'PF-015' },
+    { entryCount: 6, expectedTables: 27, ticket: 'PF-016' },
   ])(
     'upgrades a $ticket database without reapplying prior migrations',
     async ({ entryCount, expectedTables }) => {
@@ -1303,7 +1435,7 @@ describe('database migrations', () => {
                 afterUpgradeClient,
                 'select count(*)::integer as count from drizzle.__drizzle_migrations',
               ),
-            ).toBe(6);
+            ).toBe(7);
             expect(
               await queryCount(
                 afterUpgradeClient,

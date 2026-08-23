@@ -12,6 +12,9 @@ recurring series, transaction tags, and bounded audit events. PF-016 adds 12 nor
 the canonical effective transaction and supporting review/reconciliation indexes. The views preserve
 explicit user-null overrides, keep incompatible currencies out of totals, distinguish spending from
 deposit-account cash flow, and expose unresolved evidence instead of fabricating transactions.
+PF-017 validates classification-rule category codes in PostgreSQL and audits all 34 relationships
+between workspace-owned tables for leading `workspace_id` columns and matching parent candidate
+keys.
 
 From the repository root:
 
