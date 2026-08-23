@@ -30,3 +30,22 @@ export {
   type MoneyJson,
   type SignedAmountEvidence,
 } from './money.js';
+export {
+  accountTypes,
+  calculateTransactionEffects,
+  classifyTransaction,
+  selectAnalyticsAmount,
+  transactionAmounts,
+  transactionDirections,
+  transactionFinancialRoles,
+  type AccountType,
+  type EconomicRepresentation,
+  type FinancialRole,
+  type ProviderDebitCreditType,
+  type TransactionClassification,
+  type TransactionClassificationEvidence,
+  type TransactionDirection,
+  type TransactionEffectInput,
+  type TransactionEffects,
+  type TransactionPolicyWarning,
+} from './transaction-policy.js';

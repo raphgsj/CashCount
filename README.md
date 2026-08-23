@@ -5,7 +5,7 @@ owner's financial data through a provider adapter, preserves normalized history 
 and exposes deterministic analytics to an authenticated web application and a read-only MCP
 server.
 
-**Phases 0 and 1 are complete, and Phase 2 is in progress through PF-020:**
+**Phases 0 and 1 are complete, and Phase 2 is in progress through PF-021:**
 
 - **PF-001** established the monorepo and application/package foundations.
 - **PF-002** added validated application environments and production safety constraints.
@@ -35,13 +35,15 @@ server.
 - **PF-020** added exact Decimal-backed money/value types, string-only monetary JSON, signed
   provider/account-currency evidence, strict bank dates and bill months, and arbitrary-IANA-timezone
   local financial-date derivation.
+- **PF-021** added provider-neutral account-aware direction/role classification and separate
+  count-once spending/cash-flow effects for purchases, refunds, fees, transfers, card payments,
+  evidence children, exclusions, unresolved credits, and mixed currencies.
 
 PF-003 through PF-006 are architecture-documentation milestones; executable implementation now
-extends through PF-020's complete database foundation and initial domain value types. The repository
-intentionally contains no rule evaluator, transaction financial-policy implementation, analytics
-service, general financial-data repositories, provider API integration, queue worker implementation,
-authentication implementation, product UI, or production secrets. The next ticket is **PF-021:
-transaction policy**.
+extends through PF-021's complete database foundation and initial deterministic domain policy. The
+repository intentionally contains no rule evaluator, analytics service, general financial-data
+repositories, provider API integration, queue worker implementation, authentication implementation,
+product UI, or production secrets. The next ticket is **PF-022: provider-neutral contracts**.
 
 The accepted decisions are indexed in [`docs/adr/`](docs/adr/README.md). In particular, ADRs 0008
 through 0010 are the implementation contracts for credential boundaries, workspace integrity, and
@@ -106,7 +108,7 @@ packages/
   config/     validated environment and shared configuration
   contracts/  shell for future runtime schemas and public types
   db/         Drizzle schema, migrations, and canonical financial query views; future repositories
-  domain/     exact money/date types; future provider-neutral transaction policy
+  domain/     exact money/date types and provider-neutral transaction policy
   provider-core/    provider-neutral adapter shell
   provider-pluggy/  Pluggy adapter shell
   classification/   classification shell

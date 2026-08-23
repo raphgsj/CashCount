@@ -24,7 +24,9 @@ record; the versioned implementation plan is the canonical specification.
   tolerances, one active match per payment/bank transaction, and validated count-once reconciliation.
 - PF-020 starts Phase 2 with Decimal-backed money, string-only monetary JSON, signed amount
   evidence, strict bank dates/bill months, and arbitrary-IANA-timezone local-date derivation.
-- The next ticket is PF-021, which implements transaction spending/cash-flow policy. Do not
+- PF-021 adds account-aware direction/role classification and separate, count-once spending and
+  deposit cash-flow effects with mixed-currency/unresolved-evidence warnings.
+- The next ticket is PF-022, which defines provider-neutral runtime contracts. Do not
   imply that provider
   integration, queue worker behavior, authentication implementation, rule evaluation, financial
   policy or analytics services, repositories, or product UI already exist.

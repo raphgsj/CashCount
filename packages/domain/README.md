@@ -11,4 +11,11 @@ first executable domain boundary:
 - transaction-local dates are derived from explicit-offset instants with any valid workspace IANA
   timezone, including daylight-saving transitions.
 
-Transaction role, spending, cash-flow, and provider mapping behavior remain later ticket work.
+PF-021 adds the provider-neutral transaction policy. It applies an account-aware sign/evidence
+matrix, never sign alone, and calculates purchase-based spending separately from deposit-account
+cash flow. Card payments count only on the bank side, transfers are neutral, bill children remain
+evidence-only, matched finance charges count through the transaction once, unresolved card credits
+remain zero pending review, and incompatible currencies produce structured warnings without a
+fabricated conversion.
+
+Provider DTO validation and provider-specific mapping remain later ticket work.
