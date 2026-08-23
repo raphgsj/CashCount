@@ -23,6 +23,19 @@ const workspaces = [
   ['packages/test-fixtures', '@cashcount/test-fixtures'],
 ] as const;
 
+const architectureDecisionRecords = [
+  '0001-typescript-monorepo.md',
+  '0002-postgresql-system-of-record.md',
+  '0003-provider-adapter-boundary.md',
+  '0004-postgres-backed-job-queue.md',
+  '0005-vercel-bff-and-railway-api.md',
+  '0006-read-only-mcp.md',
+  '0007-raw-payload-encryption.md',
+  '0008-credential-and-trust-boundaries.md',
+  '0009-workspace-integrity.md',
+  '0010-provider-identity-and-bill-semantics.md',
+] as const;
+
 describe('repository foundation', () => {
   it.each(workspaces)('%s declares its expected package identity and checks', (path, name) => {
     const manifest = JSON.parse(readFileSync(join(repositoryRoot, path, 'package.json'), 'utf8'));
@@ -57,5 +70,15 @@ describe('repository foundation', () => {
 
     expect(environmentLines.length).toBeGreaterThan(0);
     expect(environmentLines.every((line) => /^[A-Z][A-Z0-9_]*=$/.test(line))).toBe(true);
+  });
+
+  it.each(architectureDecisionRecords)('%s records a complete accepted decision', (fileName) => {
+    const record = readFileSync(join(repositoryRoot, 'docs', 'adr', fileName), 'utf8');
+
+    expect(record).toContain('- **Status:** Accepted');
+    expect(record).toContain('## Context');
+    expect(record).toContain('## Decision');
+    expect(record).toContain('## Alternatives considered');
+    expect(record).toContain('## Consequences');
   });
 });
