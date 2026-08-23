@@ -108,7 +108,11 @@ importers:
         specifier: 4.4.3
         version: 4.4.3
 
-  packages/provider-pluggy: {}
+  packages/provider-pluggy:
+    dependencies:
+      zod:
+        specifier: 4.4.3
+        version: 4.4.3
 
   packages/test-fixtures: {}
 

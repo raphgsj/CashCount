@@ -1,1 +1,15 @@
+export {
+  PluggyApiKeyProvider,
+  PluggyAuthResponseError,
+  PluggyHttpError,
+  PluggyTransportError,
+  type PluggyApiKeyProviderOptions,
+  type PluggyHttpLogEvent,
+  type PluggyHttpLogger,
+} from './api-key-provider.js';
+export {
+  PluggyAuthenticatedHttpClient,
+  type PluggyAuthenticatedHttpClientOptions,
+} from './authenticated-http-client.js';
+
 export const packageName = '@cashcount/provider-pluggy' as const;

@@ -28,9 +28,11 @@ record; the versioned implementation plan is the canonical specification.
   deposit cash-flow effects with mixed-currency/unresolved-evidence warnings.
 - PF-022 adds strict provider-neutral runtime contracts for lifecycle, accounts, signed amounts,
   nullable enrichment, credit-card metadata, bill children, cursor pages, and the provider interface.
-- The next ticket is PF-023, which implements the Pluggy authentication client. Do not
+- PF-023 adds server-side Pluggy API-key creation, expiration-aware in-memory caching, one-refresh
+  concurrency, one-time 401 recovery, and structurally redacted HTTP metadata logging.
+- The next ticket is PF-024, which implements the Pluggy data client. Do not
   imply that provider
-  integration, queue worker behavior, authentication implementation, rule evaluation, financial
+  data mapping, queue worker behavior, product authentication, rule evaluation, financial
   policy or analytics services, repositories, or product UI already exist.
 - ADRs 0008, 0009, and 0010 define mandatory credential, workspace, provider-identity, signed-amount,
   and bill-reconciliation behavior for subsequent tickets.

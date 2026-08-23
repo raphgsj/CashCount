@@ -5,7 +5,7 @@ owner's financial data through a provider adapter, preserves normalized history 
 and exposes deterministic analytics to an authenticated web application and a read-only MCP
 server.
 
-**Phases 0 and 1 are complete, and Phase 2 is in progress through PF-022:**
+**Phases 0 and 1 are complete, and Phase 2 is in progress through PF-023:**
 
 - **PF-001** established the monorepo and application/package foundations.
 - **PF-002** added validated application environments and production safety constraints.
@@ -41,13 +41,16 @@ server.
 - **PF-022** added strict provider-neutral runtime contracts for connection lifecycle, accounts,
   signed transactions, nullable enrichment, credit-card metadata, bills and their payment/finance-
   charge evidence, plus cursor pages and the provider interface.
+- **PF-023** added Pluggy backend API-key creation, two-hour in-memory caching with five-minute
+  early refresh, a single concurrent refresh guard, one-time 401 recovery, and structurally redacted
+  HTTP metadata logging.
 
 PF-003 through PF-006 are architecture-documentation milestones; executable implementation now
-extends through PF-022's database foundation, initial deterministic domain policy, and validated
-provider boundary. The repository intentionally contains no rule evaluator, analytics service,
-general financial-data
-repositories, provider API integration, queue worker implementation, authentication implementation,
-product UI, or production secrets. The next ticket is **PF-023: Pluggy auth client**.
+extends through PF-023's database foundation, initial deterministic domain policy, validated provider
+boundary, and Pluggy authentication transport. The repository intentionally contains no rule
+evaluator, analytics service, general financial-data repositories, Pluggy data mapping, queue worker
+implementation, product authentication, product UI, or production secrets. The next ticket is
+**PF-024: Pluggy data client**.
 
 The accepted decisions are indexed in [`docs/adr/`](docs/adr/README.md). In particular, ADRs 0008
 through 0010 are the implementation contracts for credential boundaries, workspace integrity, and
