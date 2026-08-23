@@ -22,6 +22,13 @@
       "when": 1787529600002,
       "tag": "0002_provider_sync",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1787529600003,
+      "tag": "0003_financial_core",
+      "breakpoints": true
     }
   ]
 }

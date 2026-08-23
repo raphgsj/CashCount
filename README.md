@@ -5,7 +5,7 @@ owner's financial data through a provider adapter, preserves normalized history 
 and exposes deterministic analytics to an authenticated web application and a read-only MCP
 server.
 
-**Phase 0 is complete (PF-001 through PF-006), and Phase 1 is in progress through PF-013:**
+**Phase 0 is complete (PF-001 through PF-006), and Phase 1 is in progress through PF-014:**
 
 - **PF-001** established the monorepo and application/package foundations.
 - **PF-002** added validated application environments and production safety constraints.
@@ -18,12 +18,15 @@ server.
 - **PF-012** added the identity/workspace schema and an idempotent synthetic local seed.
 - **PF-013** added provider/synchronization persistence with encrypted evidence envelopes,
   workspace-aware webhook idempotency, a lease-ready durable queue, and sync-run integrity.
+- **PF-014** added the workspace-isolated financial core schema for accounts/history, bills and
+  reconciliation evidence, categories/merchants, transactions, user state, continuity, and revisions.
 
 PF-003 through PF-006 are architecture-documentation milestones; executable implementation now
-extends through PF-013's identity, workspace, provider, and synchronization database foundation. The
-repository intentionally contains no financial tables or logic, provider API integration, queue
-worker implementation, authentication implementation, product UI, or production secrets. The next
-ticket is **PF-014: financial core schema**.
+extends through PF-014's identity, workspace, provider/synchronization, and financial-core database
+foundation. The repository intentionally contains no financial policy implementation, analytics or
+effective views, repositories, provider API integration, queue worker implementation, authentication
+implementation, product UI, or production secrets. The next ticket is **PF-015: intelligence
+schema**.
 
 The accepted decisions are indexed in [`docs/adr/`](docs/adr/README.md). In particular, ADRs 0008
 through 0010 are the implementation contracts for credential boundaries, workspace integrity, and
@@ -87,7 +90,7 @@ apps/
 packages/
   config/     validated environment and shared configuration
   contracts/  shell for future runtime schemas and public types
-  db/         Drizzle identity, workspace, provider/sync schema and migrations; future repositories
+  db/         Drizzle identity, provider/sync, and financial-core schema; future repositories
   domain/     shell for future provider-neutral financial policy
   provider-core/    provider-neutral adapter shell
   provider-pluggy/  Pluggy adapter shell

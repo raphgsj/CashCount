@@ -109,7 +109,7 @@ describe('repository foundation', () => {
     }
   });
 
-  it('defines the PF-013 identity, workspace, provider, and sync schema boundary', () => {
+  it('defines the PF-014 financial-core schema boundary', () => {
     const schema = readFileSync(join(repositoryRoot, 'packages', 'db', 'src', 'schema.ts'), 'utf8');
     const seed = readFileSync(join(repositoryRoot, 'packages', 'db', 'src', 'seed.ts'), 'utf8');
 
@@ -123,7 +123,21 @@ describe('repository foundation', () => {
     expect(schema).toContain("'sync_run'");
     expect(schema).toContain('sync_run_workspace_provider_connection_fk');
     expect(schema).toContain('job_queue_active_dedupe_uq');
-    expect(schema).not.toContain("'financial_account'");
+    expect(schema).toContain("'financial_account'");
+    expect(schema).toContain("'credit_card_bill'");
+    expect(schema).toContain("'credit_card_bill_payment'");
+    expect(schema).toContain("'credit_card_bill_finance_charge'");
+    expect(schema).toContain("'bill_payment_reconciliation'");
+    expect(schema).toContain("'category'");
+    expect(schema).toContain("'merchant'");
+    expect(schema).toContain("'merchant_alias'");
+    expect(schema).toContain("'financial_transaction'");
+    expect(schema).toContain("'transaction_user_state'");
+    expect(schema).toContain("'transaction_identity_link'");
+    expect(schema).toContain("'transaction_revision'");
+    expect(schema).toContain("numeric('provider_amount_signed', { precision: 20, scale: 6 })");
+    expect(schema).toContain('financial_transaction_workspace_financial_account_fk');
+    expect(schema).not.toContain("'classification_rule'");
     expect(seed).toContain('owner@example.test');
     expect(seed).toContain('Synthetic Personal Finance');
   });
@@ -195,14 +209,14 @@ describe('repository foundation', () => {
     const adrIndex = readFileSync(join(repositoryRoot, 'docs', 'adr', 'README.md'), 'utf8');
 
     expect(readme).toContain(
-      '**Phase 0 is complete (PF-001 through PF-006), and Phase 1 is in progress through PF-013:**',
+      '**Phase 0 is complete (PF-001 through PF-006), and Phase 1 is in progress through PF-014:**',
     );
-    expect(readme).toContain('**PF-014: financial core schema**');
+    expect(readme).toContain('**PF-015: intelligence');
     expect(readme).toContain('configuration-validated shell; future Next.js web application');
     expect(agentInstructions).toContain('## Current implementation state');
     expect(agentInstructions).toContain('Phase 0 is complete: PF-001 through PF-006.');
-    expect(agentInstructions).toContain('PF-010 through PF-013 are complete');
-    expect(agentInstructions).toContain('The next ticket is PF-014');
+    expect(agentInstructions).toContain('PF-010 through PF-014 are complete');
+    expect(agentInstructions).toContain('The next ticket is PF-015');
     expect(agentInstructions).toContain('Update this section and the root README together');
     expect(adrIndex).toContain('These records complete the');
     expect(adrIndex).toContain('Phase 0 decision backlog');

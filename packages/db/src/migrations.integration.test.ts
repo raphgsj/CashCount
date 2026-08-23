@@ -24,6 +24,17 @@ interface MigrationJournalEntry {
   tag: string;
 }
 
+interface SyntheticTransactionInput {
+  accountId: string;
+  billId?: string;
+  categoryId?: string;
+  id: string;
+  latestRawObjectId?: string;
+  merchantId?: string;
+  providerTransactionId: string;
+  workspaceId: string;
+}
+
 function quoteIdentifier(identifier: string): string {
   if (!/^cashcount_migration_[0-9a-f]+$/u.test(identifier)) {
     throw new Error('Refusing to quote an unexpected test database identifier.');
@@ -89,6 +100,37 @@ async function queryCount(client: Client, query: string): Promise<number | undef
   return result.rows[0]?.count;
 }
 
+async function insertSyntheticTransaction(
+  client: Client,
+  input: SyntheticTransactionInput,
+): Promise<void> {
+  await client.query(
+    `insert into financial_transaction (
+      id, workspace_id, financial_account_id, provider, provider_transaction_id, status,
+      provider_type, provider_amount_signed, provider_currency, account_currency,
+      system_direction, system_financial_role, provider_transaction_at,
+      transaction_local_date, description_original, description_normalized,
+      system_merchant_id, system_category_id, credit_card_bill_id, dedupe_fingerprint,
+      latest_raw_object_id
+    ) values (
+      $1, $2, $3, 'PLUGGY', $4, 'POSTED', 'DEBIT', '-123.450000', 'BRL', 'BRL',
+      'OUTFLOW', 'PURCHASE', '2026-08-20T15:30:00Z', '2026-08-20',
+      'Synthetic transaction', 'synthetic transaction', $5, $6, $7, $8, $9
+    )`,
+    [
+      input.id,
+      input.workspaceId,
+      input.accountId,
+      input.providerTransactionId,
+      input.merchantId ?? null,
+      input.categoryId ?? null,
+      input.billId ?? null,
+      'b'.repeat(64),
+      input.latestRawObjectId ?? null,
+    ],
+  );
+}
+
 describe('database migrations', () => {
   it('runs from zero, remains idempotent, and seeds synthetic identity data', async () => {
     await withTemporaryDatabase(async (connectionString) => {
@@ -106,13 +148,13 @@ describe('database migrations', () => {
             client,
             'select count(*)::integer as count from drizzle.__drizzle_migrations',
           ),
-        ).toBe(3);
+        ).toBe(4);
         expect(
           await queryCount(
             client,
             "select count(*)::integer as count from pg_tables where schemaname = 'public'",
           ),
-        ).toBe(8);
+        ).toBe(20);
         expect(
           await queryCount(
             client,
@@ -324,9 +366,373 @@ describe('database migrations', () => {
     });
   }, 30_000);
 
+  it('enforces financial identities, workspace isolation, category visibility, and reconciliation roles', async () => {
+    await withTemporaryDatabase(async (connectionString) => {
+      await runMigrations(connectionString);
+      await seedSyntheticIdentity(connectionString, 'test');
+
+      const client = new Client({ connectionString });
+      const workspaceA = syntheticIdentitySeed.workspace.id;
+      const workspaceB = '20000000-0000-4000-8000-000000000002';
+      const connectionA = '40000000-0000-4000-8000-000000000001';
+      const connectionB = '40000000-0000-4000-8000-000000000002';
+      const rawA = '50000000-0000-4000-8000-000000000001';
+      const rawB = '50000000-0000-4000-8000-000000000002';
+      const checkingAccountA = '60000000-0000-4000-8000-000000000001';
+      const cardAccountA = '60000000-0000-4000-8000-000000000002';
+      const cardAccountB = '60000000-0000-4000-8000-000000000003';
+      const billA = '70000000-0000-4000-8000-000000000001';
+      const billB = '70000000-0000-4000-8000-000000000002';
+      const builtinCategory = '80000000-0000-4000-8000-000000000001';
+      const customCategoryA = '80000000-0000-4000-8000-000000000002';
+      const customCategoryB = '80000000-0000-4000-8000-000000000003';
+      const merchantA = '90000000-0000-4000-8000-000000000001';
+      const merchantB = '90000000-0000-4000-8000-000000000002';
+      const cardTransactionA = 'a0000000-0000-4000-8000-000000000001';
+      const successorTransactionA = 'a0000000-0000-4000-8000-000000000002';
+      const alternateSuccessorA = 'a0000000-0000-4000-8000-000000000003';
+      const bankTransactionA = 'a0000000-0000-4000-8000-000000000004';
+      const secondBankTransactionA = 'a0000000-0000-4000-8000-000000000005';
+      const cardTransactionB = 'a0000000-0000-4000-8000-000000000006';
+      const billPaymentA = 'b0000000-0000-4000-8000-000000000001';
+      const sha256 = 'a'.repeat(64);
+      const customCode = `custom.${customCategoryA}`;
+      const envelopeSql = "decode('01', 'hex'), decode('02', 'hex'), decode('03', 'hex')";
+
+      try {
+        await client.connect();
+        await client.query(`insert into workspace (id, name) values ($1, 'Second Workspace')`, [
+          workspaceB,
+        ]);
+        await client.query(
+          `insert into provider_connection (id, workspace_id, provider, external_connection_id, external_connector_id, display_name) values ($1, $2, 'PLUGGY', 'shared-item', 'connector', 'Connection A'), ($3, $4, 'PLUGGY', 'shared-item', 'connector', 'Connection B')`,
+          [connectionA, workspaceA, connectionB, workspaceB],
+        );
+        await client.query(
+          `insert into provider_raw_object (id, workspace_id, provider, entity_type, external_id, payload_ciphertext, payload_iv, payload_tag, key_version, payload_sha256, observed_at) values ($1, $2, 'PLUGGY', 'ACCOUNT', 'account-a', ${envelopeSql}, 1, $3, now()), ($4, $5, 'PLUGGY', 'ACCOUNT', 'account-b', ${envelopeSql}, 1, $3, now())`,
+          [rawA, workspaceA, sha256, rawB, workspaceB],
+        );
+
+        await client.query(
+          `insert into financial_account (id, workspace_id, provider_connection_id, provider, external_account_id, account_type, name, institution_name, currency, masked_number, latest_raw_object_id) values
+            ($1, $2, $3, 'PLUGGY', 'shared-account', 'CHECKING', 'Checking A', 'Synthetic Bank', 'BRL', '1234', $4),
+            ($5, $2, $3, 'PLUGGY', 'card-a', 'CREDIT_CARD', 'Card A', 'Synthetic Bank', 'BRL', '5678', $4),
+            ($6, $7, $8, 'PLUGGY', 'shared-account', 'CREDIT_CARD', 'Card B', 'Synthetic Bank', 'BRL', '9012', $9)`,
+          [
+            checkingAccountA,
+            workspaceA,
+            connectionA,
+            rawA,
+            cardAccountA,
+            cardAccountB,
+            workspaceB,
+            connectionB,
+            rawB,
+          ],
+        );
+        await expect(
+          client.query(
+            `insert into financial_account (workspace_id, provider_connection_id, provider, external_account_id, account_type, name, institution_name, currency) values ($1, $2, 'PLUGGY', 'shared-account', 'OTHER', 'Duplicate', 'Synthetic Bank', 'BRL')`,
+            [workspaceA, connectionA],
+          ),
+        ).rejects.toMatchObject({ code: '23505' });
+        await expect(
+          client.query(
+            `insert into financial_account (workspace_id, provider_connection_id, provider, external_account_id, account_type, name, institution_name, currency) values ($1, $2, 'PLUGGY', 'cross-connection', 'OTHER', 'Cross Connection', 'Synthetic Bank', 'BRL')`,
+            [workspaceA, connectionB],
+          ),
+        ).rejects.toMatchObject({ code: '23503' });
+        await expect(
+          client.query(
+            `insert into financial_account (workspace_id, provider_connection_id, provider, external_account_id, account_type, name, institution_name, currency, latest_raw_object_id) values ($1, $2, 'PLUGGY', 'cross-raw', 'OTHER', 'Cross Raw', 'Synthetic Bank', 'BRL', $3)`,
+            [workspaceA, connectionA, rawB],
+          ),
+        ).rejects.toMatchObject({ code: '23503' });
+
+        await client.query(
+          `insert into credit_card_bill (id, workspace_id, financial_account_id, provider, external_bill_id, status, total_amount, currency) values ($1, $2, $3, 'PLUGGY', 'shared-bill', 'OPEN', '500.000000', 'BRL'), ($4, $5, $6, 'PLUGGY', 'shared-bill', 'OPEN', '500.000000', 'BRL')`,
+          [billA, workspaceA, cardAccountA, billB, workspaceB, cardAccountB],
+        );
+        await expect(
+          client.query(
+            `insert into credit_card_bill (workspace_id, financial_account_id, provider, external_bill_id, status, currency) values ($1, $2, 'PLUGGY', 'checking-bill', 'OPEN', 'BRL')`,
+            [workspaceA, checkingAccountA],
+          ),
+        ).rejects.toMatchObject({ code: '23514' });
+        await expect(
+          client.query(
+            `insert into credit_card_bill (workspace_id, financial_account_id, provider, external_bill_id, status, currency) values ($1, $2, 'PLUGGY', 'cross-bill', 'OPEN', 'BRL')`,
+            [workspaceA, cardAccountB],
+          ),
+        ).rejects.toMatchObject({ code: '23514' });
+
+        await client.query(
+          `insert into category (id, code, kind, name_en, name_pt_br) values ($1, 'expense.food', 'EXPENSE', 'Food', 'Alimentação')`,
+          [builtinCategory],
+        );
+        await client.query(
+          `insert into category (id, workspace_id, code, parent_id, kind, name_en, name_pt_br) values ($1, $2, $3, $4, 'EXPENSE', 'Custom A', 'Personalizada A'), ($5, $6, $3, null, 'EXPENSE', 'Custom B', 'Personalizada B')`,
+          [customCategoryA, workspaceA, customCode, builtinCategory, customCategoryB, workspaceB],
+        );
+        await expect(
+          client.query(
+            `insert into category (workspace_id, code, kind, name_en, name_pt_br) values ($1, 'expense.invalid', 'EXPENSE', 'Invalid', 'Inválida')`,
+            [workspaceA],
+          ),
+        ).rejects.toMatchObject({ code: '23514' });
+        await expect(
+          client.query(
+            `insert into category (code, parent_id, kind, name_en, name_pt_br) values ('expense.invalid_parent', $1, 'EXPENSE', 'Invalid', 'Inválida')`,
+            [customCategoryA],
+          ),
+        ).rejects.toMatchObject({ code: '23514' });
+        await expect(
+          client.query(
+            `insert into category (workspace_id, code, parent_id, kind, name_en, name_pt_br) values ($1, 'custom.80000000-0000-4000-8000-000000000004', $2, 'EXPENSE', 'Invalid', 'Inválida')`,
+            [workspaceA, customCategoryB],
+          ),
+        ).rejects.toMatchObject({ code: '23514' });
+        await expect(
+          client.query(`update category set code = 'expense.changed' where id = $1`, [
+            builtinCategory,
+          ]),
+        ).rejects.toMatchObject({ code: '23514' });
+
+        await client.query(
+          `insert into merchant (id, workspace_id, canonical_name, normalized_key, default_category_id) values ($1, $2, 'Merchant A', 'merchant-a', $3), ($4, $5, 'Merchant B', 'merchant-b', null)`,
+          [merchantA, workspaceA, builtinCategory, merchantB, workspaceB],
+        );
+        await expect(
+          client.query(
+            `insert into merchant (workspace_id, canonical_name, normalized_key, default_category_id) values ($1, 'Cross Category', 'cross-category', $2)`,
+            [workspaceA, customCategoryB],
+          ),
+        ).rejects.toMatchObject({ code: '23514' });
+        await expect(
+          client.query(
+            `insert into merchant_alias (workspace_id, merchant_id, alias_normalized, match_type, source, confidence) values ($1, $2, 'cross-alias', 'EXACT', 'USER', '1.0000')`,
+            [workspaceA, merchantB],
+          ),
+        ).rejects.toMatchObject({ code: '23503' });
+
+        await insertSyntheticTransaction(client, {
+          accountId: cardAccountA,
+          billId: billA,
+          categoryId: customCategoryA,
+          id: cardTransactionA,
+          latestRawObjectId: rawA,
+          merchantId: merchantA,
+          providerTransactionId: 'shared-provider-transaction',
+          workspaceId: workspaceA,
+        });
+        await insertSyntheticTransaction(client, {
+          accountId: cardAccountA,
+          id: successorTransactionA,
+          providerTransactionId: 'successor-a',
+          workspaceId: workspaceA,
+        });
+        await insertSyntheticTransaction(client, {
+          accountId: cardAccountA,
+          id: alternateSuccessorA,
+          providerTransactionId: 'alternate-successor-a',
+          workspaceId: workspaceA,
+        });
+        await insertSyntheticTransaction(client, {
+          accountId: checkingAccountA,
+          id: bankTransactionA,
+          providerTransactionId: 'bank-payment-a',
+          workspaceId: workspaceA,
+        });
+        await insertSyntheticTransaction(client, {
+          accountId: checkingAccountA,
+          id: secondBankTransactionA,
+          providerTransactionId: 'bank-payment-a-2',
+          workspaceId: workspaceA,
+        });
+        await insertSyntheticTransaction(client, {
+          accountId: cardAccountB,
+          id: cardTransactionB,
+          latestRawObjectId: rawB,
+          providerTransactionId: 'shared-provider-transaction',
+          workspaceId: workspaceB,
+        });
+
+        const exactAmounts = await client.query<{
+          account_amount: string | null;
+          provider_amount: string;
+        }>(
+          `select account_currency_amount_signed::text as account_amount, provider_amount_signed::text as provider_amount from financial_transaction where id = $1`,
+          [cardTransactionA],
+        );
+        expect(exactAmounts.rows[0]).toEqual({
+          account_amount: null,
+          provider_amount: '-123.450000',
+        });
+        await expect(
+          insertSyntheticTransaction(client, {
+            accountId: cardAccountA,
+            id: 'a0000000-0000-4000-8000-000000000010',
+            providerTransactionId: 'shared-provider-transaction',
+            workspaceId: workspaceA,
+          }),
+        ).rejects.toMatchObject({ code: '23505' });
+        await expect(
+          insertSyntheticTransaction(client, {
+            accountId: cardAccountA,
+            id: 'a0000000-0000-4000-8000-000000000011',
+            merchantId: merchantB,
+            providerTransactionId: 'cross-merchant',
+            workspaceId: workspaceA,
+          }),
+        ).rejects.toMatchObject({ code: '23503' });
+        await expect(
+          insertSyntheticTransaction(client, {
+            accountId: cardAccountA,
+            categoryId: customCategoryB,
+            id: 'a0000000-0000-4000-8000-000000000012',
+            providerTransactionId: 'cross-category',
+            workspaceId: workspaceA,
+          }),
+        ).rejects.toMatchObject({ code: '23514' });
+        await expect(
+          insertSyntheticTransaction(client, {
+            accountId: cardAccountA,
+            id: 'a0000000-0000-4000-8000-000000000013',
+            latestRawObjectId: rawB,
+            providerTransactionId: 'cross-raw',
+            workspaceId: workspaceA,
+          }),
+        ).rejects.toMatchObject({ code: '23503' });
+        await expect(
+          insertSyntheticTransaction(client, {
+            accountId: checkingAccountA,
+            billId: billA,
+            id: 'a0000000-0000-4000-8000-000000000014',
+            providerTransactionId: 'wrong-bill-account',
+            workspaceId: workspaceA,
+          }),
+        ).rejects.toMatchObject({ code: '23514' });
+        await expect(
+          client.query(`update financial_transaction set transfer_pair_id = id where id = $1`, [
+            cardTransactionA,
+          ]),
+        ).rejects.toMatchObject({ code: '23514' });
+        await expect(
+          client.query(`update financial_transaction set transfer_pair_id = $1 where id = $2`, [
+            cardTransactionB,
+            cardTransactionA,
+          ]),
+        ).rejects.toMatchObject({ code: '23503' });
+
+        await client.query(
+          `insert into transaction_user_state (financial_transaction_id, workspace_id, category_override_enabled, category_id_override, merchant_override_enabled, merchant_id_override, notes, updated_by_actor_type) values ($1, $2, true, $3, true, $4, 'Synthetic note', 'USER')`,
+          [cardTransactionA, workspaceA, builtinCategory, merchantA],
+        );
+        await expect(
+          client.query(
+            `insert into transaction_user_state (financial_transaction_id, workspace_id, category_override_enabled, category_id_override, updated_by_actor_type) values ($1, $2, true, $3, 'USER')`,
+            [successorTransactionA, workspaceA, customCategoryB],
+          ),
+        ).rejects.toMatchObject({ code: '23514' });
+        await expect(
+          client.query(
+            `insert into transaction_user_state (financial_transaction_id, workspace_id, updated_by_actor_type) values ($1, $2, 'USER')`,
+            [cardTransactionB, workspaceA],
+          ),
+        ).rejects.toMatchObject({ code: '23503' });
+
+        const identityLink = await client.query<{ id: string }>(
+          `insert into transaction_identity_link (workspace_id, predecessor_transaction_id, successor_transaction_id, confidence) values ($1, $2, $3, '0.9400') returning id`,
+          [workspaceA, cardTransactionA, successorTransactionA],
+        );
+        await expect(
+          client.query(
+            `insert into transaction_identity_link (workspace_id, predecessor_transaction_id, successor_transaction_id) values ($1, $2, $2)`,
+            [workspaceA, cardTransactionA],
+          ),
+        ).rejects.toMatchObject({ code: '23514' });
+        await expect(
+          client.query(
+            `insert into transaction_identity_link (workspace_id, predecessor_transaction_id, successor_transaction_id) values ($1, $2, $3)`,
+            [workspaceA, cardTransactionA, cardTransactionB],
+          ),
+        ).rejects.toMatchObject({ code: '23503' });
+        await client.query(
+          `update transaction_identity_link set status = 'AUTO_CONFIRMED', confirmed_at = now() where id = $1`,
+          [identityLink.rows[0]?.id],
+        );
+        await expect(
+          client.query(
+            `insert into transaction_identity_link (workspace_id, predecessor_transaction_id, successor_transaction_id, status, confirmed_at) values ($1, $2, $3, 'USER_CONFIRMED', now())`,
+            [workspaceA, cardTransactionA, alternateSuccessorA],
+          ),
+        ).rejects.toMatchObject({ code: '23505' });
+
+        await client.query(
+          `insert into transaction_revision (workspace_id, financial_transaction_id, change_type, changed_fields, actor_type) values ($1, $2, 'PROVIDER_UPDATE', '{"status":{"from":"PENDING","to":"POSTED"}}', 'WORKER')`,
+          [workspaceA, cardTransactionA],
+        );
+        await expect(
+          client.query(
+            `insert into transaction_revision (workspace_id, financial_transaction_id, change_type, changed_fields, actor_type) values ($1, $2, 'PROVIDER_UPDATE', '{}', 'WORKER')`,
+            [workspaceA, cardTransactionB],
+          ),
+        ).rejects.toMatchObject({ code: '23503' });
+
+        await client.query(
+          `insert into credit_card_bill_payment (id, workspace_id, credit_card_bill_id, provider, external_payment_id, value_type, payment_date, amount, currency, matched_card_transaction_id, latest_raw_object_id) values ($1, $2, $3, 'PLUGGY', 'payment-a', 'FULL_PAYMENT', '2026-08-21', '123.450000', 'BRL', $4, $5)`,
+          [billPaymentA, workspaceA, billA, cardTransactionA, rawA],
+        );
+        await expect(
+          client.query(
+            `insert into credit_card_bill_payment (workspace_id, credit_card_bill_id, provider, external_payment_id, value_type, payment_date, amount, currency) values ($1, $2, 'PLUGGY', 'payment-a', 'FULL_PAYMENT', '2026-08-21', '123.450000', 'BRL')`,
+            [workspaceA, billA],
+          ),
+        ).rejects.toMatchObject({ code: '23505' });
+        await expect(
+          client.query(
+            `insert into credit_card_bill_payment (workspace_id, credit_card_bill_id, provider, external_payment_id, value_type, payment_date, amount, currency, matched_card_transaction_id) values ($1, $2, 'PLUGGY', 'payment-bank', 'FULL_PAYMENT', '2026-08-21', '123.450000', 'BRL', $3)`,
+            [workspaceA, billA, bankTransactionA],
+          ),
+        ).rejects.toMatchObject({ code: '23514' });
+
+        await client.query(
+          `insert into credit_card_bill_finance_charge (workspace_id, credit_card_bill_id, provider, external_charge_id, charge_type, amount, currency, matched_transaction_id) values ($1, $2, 'PLUGGY', 'charge-a', 'IOF', '1.230000', 'BRL', $3)`,
+          [workspaceA, billA, cardTransactionA],
+        );
+        await expect(
+          client.query(
+            `insert into credit_card_bill_finance_charge (workspace_id, credit_card_bill_id, provider, external_charge_id, charge_type, amount, currency) values ($1, $2, 'PLUGGY', 'negative-charge', 'IOF', '-1.000000', 'BRL')`,
+            [workspaceA, billA],
+          ),
+        ).rejects.toMatchObject({ code: '23514' });
+
+        await client.query(
+          `insert into bill_payment_reconciliation (workspace_id, credit_card_bill_payment_id, financial_transaction_id, match_status, match_method, confidence, matched_at) values ($1, $2, $3, 'AUTO_MATCHED', 'AMOUNT_DATE', '0.9900', now())`,
+          [workspaceA, billPaymentA, bankTransactionA],
+        );
+        await expect(
+          client.query(
+            `insert into bill_payment_reconciliation (workspace_id, credit_card_bill_payment_id, financial_transaction_id, match_status, match_method, matched_at) values ($1, $2, $3, 'USER_CONFIRMED', 'USER', now())`,
+            [workspaceA, billPaymentA, secondBankTransactionA],
+          ),
+        ).rejects.toMatchObject({ code: '23505' });
+        await expect(
+          client.query(
+            `insert into bill_payment_reconciliation (workspace_id, credit_card_bill_payment_id, financial_transaction_id, match_status, match_method) values ($1, $2, $3, 'CANDIDATE', 'AMOUNT_DATE')`,
+            [workspaceA, billPaymentA, successorTransactionA],
+          ),
+        ).rejects.toMatchObject({ code: '23514' });
+      } finally {
+        await client.end();
+      }
+    });
+  }, 30_000);
+
   it.each([
     { entryCount: 1, expectedTables: 0, ticket: 'PF-011' },
     { entryCount: 2, expectedTables: 3, ticket: 'PF-012' },
+    { entryCount: 3, expectedTables: 8, ticket: 'PF-013' },
   ])(
     'upgrades a $ticket database without reapplying prior migrations',
     async ({ entryCount, expectedTables }) => {
@@ -367,13 +773,13 @@ describe('database migrations', () => {
                 afterUpgradeClient,
                 'select count(*)::integer as count from drizzle.__drizzle_migrations',
               ),
-            ).toBe(3);
+            ).toBe(4);
             expect(
               await queryCount(
                 afterUpgradeClient,
                 "select count(*)::integer as count from pg_tables where schemaname = 'public'",
               ),
-            ).toBe(8);
+            ).toBe(20);
           } finally {
             await afterUpgradeClient.end();
           }

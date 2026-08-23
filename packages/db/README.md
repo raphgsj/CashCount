@@ -3,8 +3,11 @@
 `@cashcount/db` owns the PostgreSQL client, Drizzle schema source, append-only SQL migrations, and
 the explicit migration runner. PF-012 adds `app_user`, `workspace`, and `workspace_member`. PF-013
 adds `provider_connection`, encrypted `provider_raw_object` evidence, the workspace-aware
-`webhook_event` inbox, lease-ready `job_queue`, and `sync_run`. Financial tables, repositories,
-provider integration, and queue execution remain future work.
+`webhook_event` inbox, lease-ready `job_queue`, and `sync_run`. PF-014 adds accounts and history
+coverage, credit-card bills and reconciliation evidence, categories and merchants, exact-numeric
+provider/system transactions, separately owned transaction state, provider-identity continuity, and
+transaction revisions. Repositories, provider integration, queue execution, financial policy,
+effective/analytics views, and product behavior remain future work.
 
 From the repository root:
 
@@ -23,10 +26,16 @@ requires `DATABASE_URL` and rejects `LOCAL_DATABASE_URL`.
 uses reserved example data and refuses to run when `NODE_ENV=production`.
 
 The integration tests create uniquely named empty databases, apply the complete migration set twice,
-verify constraints and the synthetic seed, exercise PF-011 and PF-012 upgrade paths, and prove
+verify constraints and the synthetic seed, exercise PF-011 through PF-013 upgrade paths, and prove
 provider identity scope, cross-workspace rejection, encrypted-envelope checks, webhook idempotency,
-active queue dedupe, and lease-state constraints. Each temporary database is dropped afterward. The
-database user running this CI-only test must be allowed to create and drop databases.
+active queue dedupe, lease-state constraints, category visibility/immutability, exact numeric
+round-trips, transaction continuity, and bill reconciliation account roles. Each temporary database
+is dropped afterward. The database user running this CI-only test must be allowed to create and drop
+databases.
+
+PF-014 includes nullable installment/recurring series identifiers as part of the canonical
+transaction shape, but a database constraint keeps both null until PF-015 creates their parents and
+replaces that temporary guard with composite workspace foreign keys.
 
 Provider raw objects and webhook bodies are stored only as versioned encrypted envelopes. The schema
 does not implement encryption or provider calls; later write paths must use the accepted AES-256-GCM
