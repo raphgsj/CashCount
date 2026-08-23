@@ -5,7 +5,7 @@ owner's financial data through a provider adapter, preserves normalized history 
 and exposes deterministic analytics to an authenticated web application and a read-only MCP
 server.
 
-**Phase 0 is complete (PF-001 through PF-006), and Phase 1 is in progress with PF-010 complete:**
+**Phase 0 is complete (PF-001 through PF-006), and Phase 1 is in progress through PF-011:**
 
 - **PF-001** established the monorepo and application/package foundations.
 - **PF-002** added validated application environments and production safety constraints.
@@ -14,11 +14,12 @@ server.
 - **PF-005** defined workspace integrity, category visibility, and repository scoping.
 - **PF-006** defined provider-ID continuity, signed card semantics, and bill reconciliation.
 - **PF-010** added a health-checked local PostgreSQL 18 service through Docker Compose.
+- **PF-011** added Drizzle tooling, an explicit migration runner, and migration-from-zero CI coverage.
 
 PF-003 through PF-006 are architecture-documentation milestones; executable implementation now
-extends through PF-010's local PostgreSQL infrastructure. The repository intentionally contains no
-database schema or migrations, financial logic, provider integration, authentication implementation,
-or production secrets. The next ticket is **PF-011: Drizzle package and migrations**.
+extends through PF-011's database toolchain. The repository intentionally contains no application
+database tables, financial logic, provider integration, authentication implementation, or production
+secrets. The next ticket is **PF-012: identity/workspace schema**.
 
 The accepted decisions are indexed in [`docs/adr/`](docs/adr/README.md). In particular, ADRs 0008
 through 0010 are the implementation contracts for credential boundaries, workspace integrity, and
@@ -55,6 +56,17 @@ Use `LOCAL_DATABASE_URL=postgresql://cashcount:cashcount-local@127.0.0.1:5432/ca
 Docker runs in the Ubuntu UTM VM, first open the SSH tunnel documented in
 [`infra/README.md`](infra/README.md).
 
+Apply committed migrations explicitly; applications never migrate the database during startup:
+
+```bash
+pnpm db:check
+pnpm db:migrate
+pnpm test:integration
+```
+
+The integration gate creates a temporary empty PostgreSQL database, applies migrations twice to
+prove idempotence, verifies the migration journal, and removes the temporary database.
+
 Every application validates its environment at startup through `@cashcount/config`. Production
 rejects the local database fallback, rejects the development authentication bypass, and detects
 credential reuse wherever both trust-boundary values are visible to the process.
@@ -70,7 +82,7 @@ apps/
 packages/
   config/     validated environment and shared configuration
   contracts/  shell for future runtime schemas and public types
-  db/         shell for future Drizzle schema, migrations, and repositories
+  db/         Drizzle client/migration tooling; future application schema and repositories
   domain/     shell for future provider-neutral financial policy
   provider-core/    provider-neutral adapter shell
   provider-pluggy/  Pluggy adapter shell
@@ -88,6 +100,8 @@ pnpm lint
 pnpm typecheck
 pnpm test
 pnpm build
+pnpm db:check
+pnpm test:integration
 ```
 
 Read `AGENTS.md` and the implementation plan before changing code. Implement one PF ticket at a

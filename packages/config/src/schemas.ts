@@ -26,6 +26,11 @@ interface DatabaseEnvironment {
   LOCAL_DATABASE_URL?: string | undefined;
 }
 
+export interface DatabaseConfig {
+  databaseUrl: string;
+  nodeEnvironment: DatabaseEnvironment['NODE_ENV'];
+}
+
 interface EncryptionEnvironment {
   DATA_ENCRYPTION_ACTIVE_KEY_VERSION: number;
   DATA_ENCRYPTION_KEYRING_JSON: ReadonlyMap<number, Uint8Array>;
@@ -72,6 +77,18 @@ function validateDatabaseEnvironment(
     report('DATABASE_URL', 'or LOCAL_DATABASE_URL is required');
   }
 }
+
+const databaseEnvironmentSchema = z
+  .object({
+    NODE_ENV: nodeEnvironmentSchema,
+    DATABASE_URL: optionalDatabaseUrlSchema,
+    LOCAL_DATABASE_URL: optionalDatabaseUrlSchema,
+  })
+  .superRefine((environment, context) => {
+    validateDatabaseEnvironment(environment, (path, message) => {
+      context.addIssue({ code: 'custom', path: [path], message });
+    });
+  });
 
 function validateEncryptionEnvironment(
   environment: EncryptionEnvironment,
@@ -207,4 +224,18 @@ export function parseWebConfig(environment: EnvironmentInput): WebConfig {
 
 export function parseMcpConfig(environment: EnvironmentInput): McpConfig {
   return parseEnvironment('MCP', mcpEnvironmentSchema, environment);
+}
+
+export function parseDatabaseConfig(environment: EnvironmentInput): DatabaseConfig {
+  const parsed = parseEnvironment('database tooling', databaseEnvironmentSchema, environment);
+  const databaseUrl = parsed.DATABASE_URL ?? parsed.LOCAL_DATABASE_URL;
+
+  if (databaseUrl === undefined) {
+    throw new Error('Database environment validation completed without a database URL.');
+  }
+
+  return {
+    databaseUrl,
+    nodeEnvironment: parsed.NODE_ENV,
+  };
 }

@@ -7,12 +7,12 @@ record; the versioned implementation plan is the canonical specification.
 ## Current implementation state
 
 - Phase 0 is complete: PF-001 through PF-006.
-- PF-010 is complete: executable infrastructure now includes health-checked local PostgreSQL through
-  Docker Compose. PF-003 through PF-006 remain accepted architecture and integrity contracts for
-  later implementation.
-- The next ticket is PF-011, which introduces Drizzle and migrations. Do not imply that a database
-  schema, provider integration, authentication implementation, financial logic, or product UI
-  already exists.
+- PF-010 and PF-011 are complete: executable infrastructure includes health-checked local PostgreSQL,
+  Drizzle tooling, an explicit migration runner, and migration-from-zero CI verification. PF-003
+  through PF-006 remain accepted architecture and integrity contracts for later implementation.
+- The next ticket is PF-012, which introduces the identity/workspace schema. Do not imply that
+  application database tables, provider integration, authentication implementation, financial
+  logic, or product UI already exist.
 - ADRs 0008, 0009, and 0010 define mandatory credential, workspace, provider-identity, signed-amount,
   and bill-reconciliation behavior for subsequent tickets.
 - Update this section and the root README together whenever a PF ticket or phase is completed.

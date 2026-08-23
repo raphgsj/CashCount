@@ -33,7 +33,12 @@ export default tseslint.config(
     },
   },
   {
-    files: ['packages/config/src/**/*.ts', 'apps/*/src/index.ts'],
+    files: [
+      'packages/config/src/**/*.ts',
+      'packages/db/src/migrate-cli.ts',
+      'packages/db/src/*.integration.test.ts',
+      'apps/*/src/index.ts',
+    ],
     rules: {
       'no-restricted-syntax': 'off',
     },

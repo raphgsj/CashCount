@@ -82,6 +82,32 @@ describe('repository foundation', () => {
     expect(compose).not.toContain('POSTGRES_HOST_AUTH_METHOD');
   });
 
+  it('keeps migrations explicit and verifies them from an empty PostgreSQL database in CI', () => {
+    const databaseManifest = JSON.parse(
+      readFileSync(join(repositoryRoot, 'packages', 'db', 'package.json'), 'utf8'),
+    );
+    const workflow = readFileSync(join(repositoryRoot, '.github', 'workflows', 'ci.yml'), 'utf8');
+
+    expect(databaseManifest.scripts).toMatchObject({
+      'db:check': expect.any(String),
+      'db:generate': expect.any(String),
+      'db:migrate': expect.any(String),
+      'test:integration': expect.any(String),
+    });
+    expect(workflow).toContain('postgres:18.6-alpine3.24');
+    expect(workflow).toContain('pnpm db:check');
+    expect(workflow).toContain('pnpm test:integration');
+
+    for (const application of ['web', 'api', 'worker', 'mcp']) {
+      const manifest = JSON.parse(
+        readFileSync(join(repositoryRoot, 'apps', application, 'package.json'), 'utf8'),
+      );
+      const commands = Object.values(manifest.scripts ?? {}).join('\n');
+
+      expect(commands).not.toContain('db:migrate');
+    }
+  });
+
   it.each(architectureDecisionRecords)('%s records a complete accepted decision', (fileName) => {
     const record = readFileSync(join(repositoryRoot, 'docs', 'adr', fileName), 'utf8');
 
@@ -149,14 +175,14 @@ describe('repository foundation', () => {
     const adrIndex = readFileSync(join(repositoryRoot, 'docs', 'adr', 'README.md'), 'utf8');
 
     expect(readme).toContain(
-      '**Phase 0 is complete (PF-001 through PF-006), and Phase 1 is in progress with PF-010 complete:**',
+      '**Phase 0 is complete (PF-001 through PF-006), and Phase 1 is in progress through PF-011:**',
     );
-    expect(readme).toContain('**PF-011: Drizzle package and migrations**');
+    expect(readme).toContain('**PF-012: identity/workspace schema**');
     expect(readme).toContain('configuration-validated shell; future Next.js web application');
     expect(agentInstructions).toContain('## Current implementation state');
     expect(agentInstructions).toContain('Phase 0 is complete: PF-001 through PF-006.');
-    expect(agentInstructions).toContain('PF-010 is complete');
-    expect(agentInstructions).toContain('The next ticket is PF-011');
+    expect(agentInstructions).toContain('PF-010 and PF-011 are complete');
+    expect(agentInstructions).toContain('The next ticket is PF-012');
     expect(agentInstructions).toContain('Update this section and the root README together');
     expect(adrIndex).toContain('These records complete the');
     expect(adrIndex).toContain('Phase 0 decision backlog');

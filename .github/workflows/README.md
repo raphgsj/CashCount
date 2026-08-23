@@ -1,4 +1,4 @@
 # Workflows
 
-Continuous-integration workflows are introduced with the checks they execute. A workflow must not
-deploy from a failing main branch.
+`ci.yml` runs the repository quality gates, checks Drizzle migration metadata, and applies every
+migration from zero against PostgreSQL 18. No workflow deploys from a failing main branch.

@@ -25,6 +25,7 @@
     "test:integration": {
       "dependsOn": ["^build"],
       "cache": false,
+      "env": ["DATABASE_URL", "LOCAL_DATABASE_URL", "NODE_ENV"],
       "outputs": []
     },
     "test:e2e": {
