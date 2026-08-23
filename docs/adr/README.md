@@ -18,5 +18,6 @@ do not silently erase the original reasoning.
 | [0009](0009-workspace-integrity.md)                  | Accepted | Workspace isolation is enforced in database relations and repositories     |
 | [0010](0010-provider-identity-and-bill-semantics.md) | Accepted | Provider identity, continuity, and bill economics remain distinct concepts |
 
-PF-003 establishes all ten baseline decisions. PF-004 through PF-006 deepen the operational details
-of ADRs 0008 through 0010 without changing their accepted direction unless a later record says so.
+PF-003 established all ten baseline decisions. PF-004 expanded ADR 0008 with the concrete credential
+storage, authorization, rotation, and MCP data-path model. PF-005 and PF-006 will deepen ADRs 0009 and
+0010 without changing their accepted direction unless a later record says so.

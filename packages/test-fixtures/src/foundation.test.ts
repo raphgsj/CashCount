@@ -81,4 +81,20 @@ describe('repository foundation', () => {
     expect(record).toContain('## Alternatives considered');
     expect(record).toContain('## Consequences');
   });
+
+  it('records the complete credential and trust-boundary decision', () => {
+    const record = readFileSync(
+      join(repositoryRoot, 'docs', 'adr', '0008-credential-and-trust-boundaries.md'),
+      'utf8',
+    );
+
+    expect(record).toContain('## Credential role and storage matrix');
+    expect(record).toContain('## Authorization binding and verification');
+    expect(record).toContain('## Rotation protocol');
+    expect(record).toContain('## Why MCP calls the read-only Finance API');
+    expect(record).toContain('## Adjacent credentials and exclusions');
+    expect(record).toContain(
+      'Database credentials stay only in services with repository responsibilities',
+    );
+  });
 });
