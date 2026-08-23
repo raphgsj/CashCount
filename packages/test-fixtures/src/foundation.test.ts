@@ -72,6 +72,16 @@ describe('repository foundation', () => {
     expect(environmentLines.every((line) => /^[A-Z][A-Z0-9_]*=$/.test(line))).toBe(true);
   });
 
+  it('defines a persistent and health-checked local PostgreSQL service', () => {
+    const compose = readFileSync(join(repositoryRoot, 'infra', 'docker-compose.yml'), 'utf8');
+
+    expect(compose).toContain('image: postgres:18.6-alpine3.24');
+    expect(compose).toContain("'127.0.0.1:${POSTGRES_PORT:-5432}:5432'");
+    expect(compose).toContain('pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"');
+    expect(compose).toContain('postgres_data:/var/lib/postgresql');
+    expect(compose).not.toContain('POSTGRES_HOST_AUTH_METHOD');
+  });
+
   it.each(architectureDecisionRecords)('%s records a complete accepted decision', (fileName) => {
     const record = readFileSync(join(repositoryRoot, 'docs', 'adr', fileName), 'utf8');
 
@@ -133,17 +143,20 @@ describe('repository foundation', () => {
     expect(record).toContain('provider synchronization never writes `transaction_user_state`');
   });
 
-  it('records Phase 0 completion and the next implementation ticket', () => {
+  it('records the implementation boundary and next ticket', () => {
     const readme = readFileSync(join(repositoryRoot, 'README.md'), 'utf8');
     const agentInstructions = readFileSync(join(repositoryRoot, 'AGENTS.md'), 'utf8');
     const adrIndex = readFileSync(join(repositoryRoot, 'docs', 'adr', 'README.md'), 'utf8');
 
-    expect(readme).toContain('**Phase 0 is complete (PF-001 through PF-006):**');
-    expect(readme).toContain('**PF-010: local PostgreSQL**');
+    expect(readme).toContain(
+      '**Phase 0 is complete (PF-001 through PF-006), and Phase 1 is in progress with PF-010 complete:**',
+    );
+    expect(readme).toContain('**PF-011: Drizzle package and migrations**');
     expect(readme).toContain('configuration-validated shell; future Next.js web application');
     expect(agentInstructions).toContain('## Current implementation state');
     expect(agentInstructions).toContain('Phase 0 is complete: PF-001 through PF-006.');
-    expect(agentInstructions).toContain('The next ticket is PF-010');
+    expect(agentInstructions).toContain('PF-010 is complete');
+    expect(agentInstructions).toContain('The next ticket is PF-011');
     expect(agentInstructions).toContain('Update this section and the root README together');
     expect(adrIndex).toContain('These records complete the');
     expect(adrIndex).toContain('Phase 0 decision backlog');
