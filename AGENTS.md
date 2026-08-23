@@ -30,9 +30,11 @@ record; the versioned implementation plan is the canonical specification.
   nullable enrichment, credit-card metadata, bill children, cursor pages, and the provider interface.
 - PF-023 adds server-side Pluggy API-key creation, expiration-aware in-memory caching, one-refresh
   concurrency, one-time 401 recovery, and structurally redacted HTTP metadata logging.
-- The next ticket is PF-024, which implements the Pluggy data client. Do not
+- PF-024 adds validated Item/account/bill/V2-transaction retrieval, lossless provider-number mapping,
+  bounded safe-read retries/timeouts, cursor validation, and legacy webhook-hint normalization.
+- The next ticket is PF-025, which adds the complete sanitized Pluggy fixture matrix. Do not
   imply that provider
-  data mapping, queue worker behavior, product authentication, rule evaluation, financial
+  fixture coverage, queue worker behavior, product authentication, rule evaluation, financial
   policy or analytics services, repositories, or product UI already exist.
 - ADRs 0008, 0009, and 0010 define mandatory credential, workspace, provider-identity, signed-amount,
   and bill-reconciliation behavior for subsequent tickets.

@@ -14,7 +14,7 @@ export type PluggyHttpOutcome = 'AUTH_RETRY' | 'HTTP_ERROR' | 'NETWORK_ERROR' | 
 
 /** Deliberately excludes request/response headers, bodies, query strings, and error messages. */
 export interface PluggyHttpLogEvent {
-  attempt: 1 | 2;
+  attempt: number;
   component: 'pluggy_http';
   durationMs: number;
   method: string;

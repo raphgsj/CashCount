@@ -5,7 +5,7 @@ owner's financial data through a provider adapter, preserves normalized history 
 and exposes deterministic analytics to an authenticated web application and a read-only MCP
 server.
 
-**Phases 0 and 1 are complete, and Phase 2 is in progress through PF-023:**
+**Phases 0 and 1 are complete, and Phase 2 is in progress through PF-024:**
 
 - **PF-001** established the monorepo and application/package foundations.
 - **PF-002** added validated application environments and production safety constraints.
@@ -44,13 +44,16 @@ server.
 - **PF-023** added Pluggy backend API-key creation, two-hour in-memory caching with five-minute
   early refresh, a single concurrent refresh guard, one-time 401 recovery, and structurally redacted
   HTTP metadata logging.
+- **PF-024** added the validated Pluggy Item/account/bill/V2-transaction client, lossless provider
+  number parsing, neutral mapping for signed/card/bill evidence, safe cursor and legacy-webhook hint
+  normalization, bounded timeouts, and Retry-After/exponential-jitter recovery for safe reads.
 
 PF-003 through PF-006 are architecture-documentation milestones; executable implementation now
-extends through PF-023's database foundation, initial deterministic domain policy, validated provider
-boundary, and Pluggy authentication transport. The repository intentionally contains no rule
-evaluator, analytics service, general financial-data repositories, Pluggy data mapping, queue worker
-implementation, product authentication, product UI, or production secrets. The next ticket is
-**PF-024: Pluggy data client**.
+extends through PF-024's database foundation, initial deterministic domain policy, and validated
+provider/authentication/data-client boundary. The repository intentionally contains no rule
+evaluator, analytics service, general financial-data repositories, complete provider fixture matrix,
+queue worker implementation, product authentication, product UI, or production secrets. The next
+ticket is **PF-025: Pluggy fixture contract tests**.
 
 The accepted decisions are indexed in [`docs/adr/`](docs/adr/README.md). In particular, ADRs 0008
 through 0010 are the implementation contracts for credential boundaries, workspace integrity, and
