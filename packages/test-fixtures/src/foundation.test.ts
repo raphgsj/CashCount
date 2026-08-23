@@ -297,9 +297,9 @@ describe('repository foundation', () => {
     const adrIndex = readFileSync(join(repositoryRoot, 'docs', 'adr', 'README.md'), 'utf8');
 
     expect(readme).toContain(
-      '**Phases 0 and 1 are complete, and Phase 2 is in progress through PF-024:**',
+      '**Phases 0 and 1 are complete, and Phase 2 is in progress through PF-025:**',
     );
-    expect(readme).toContain('**PF-025: Pluggy fixture contract tests**');
+    expect(readme).toContain('The next ticket is **PF-026: Pluggy');
     expect(readme).toContain('configuration-validated shell; future Next.js web application');
     expect(agentInstructions).toContain('## Current implementation state');
     expect(agentInstructions).toContain('Phase 0 is complete: PF-001 through PF-006.');
@@ -309,7 +309,8 @@ describe('repository foundation', () => {
     expect(agentInstructions).toContain('PF-022 adds strict provider-neutral runtime contracts');
     expect(agentInstructions).toContain('PF-023 adds server-side Pluggy API-key creation');
     expect(agentInstructions).toContain('PF-024 adds validated Item/account/bill/V2-transaction');
-    expect(agentInstructions).toContain('The next ticket is PF-025');
+    expect(agentInstructions).toContain('PF-025 adds the complete sanitized Pluggy fixture matrix');
+    expect(agentInstructions).toContain('The next ticket is PF-026');
     expect(agentInstructions).toContain('Update this section and the root README together');
     expect(adrIndex).toContain('These records complete the');
     expect(adrIndex).toContain('Phase 0 decision backlog');

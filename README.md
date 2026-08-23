@@ -5,7 +5,7 @@ owner's financial data through a provider adapter, preserves normalized history 
 and exposes deterministic analytics to an authenticated web application and a read-only MCP
 server.
 
-**Phases 0 and 1 are complete, and Phase 2 is in progress through PF-024:**
+**Phases 0 and 1 are complete, and Phase 2 is in progress through PF-025:**
 
 - **PF-001** established the monorepo and application/package foundations.
 - **PF-002** added validated application environments and production safety constraints.
@@ -47,13 +47,16 @@ server.
 - **PF-024** added the validated Pluggy Item/account/bill/V2-transaction client, lossless provider
   number parsing, neutral mapping for signed/card/bill evidence, safe cursor and legacy-webhook hint
   normalization, bounded timeouts, and Retry-After/exponential-jitter recovery for safe reads.
+- **PF-025** added a reusable sanitized Pluggy fixture matrix and adapter contract tests for signed
+  amounts, original/account currencies, nullable enrichment, lifecycle edges, bill children,
+  cursor-observed history bounds, and distinct provider-ID replacement evidence.
 
 PF-003 through PF-006 are architecture-documentation milestones; executable implementation now
-extends through PF-024's database foundation, initial deterministic domain policy, and validated
+extends through PF-025's database foundation, initial deterministic domain policy, and validated
 provider/authentication/data-client boundary. The repository intentionally contains no rule
-evaluator, analytics service, general financial-data repositories, complete provider fixture matrix,
-queue worker implementation, product authentication, product UI, or production secrets. The next
-ticket is **PF-025: Pluggy fixture contract tests**.
+evaluator, analytics service, general financial-data repositories, queue worker implementation,
+product authentication, product UI, or production secrets. The next ticket is **PF-026: Pluggy
+lifecycle mapper**.
 
 The accepted decisions are indexed in [`docs/adr/`](docs/adr/README.md). In particular, ADRs 0008
 through 0010 are the implementation contracts for credential boundaries, workspace integrity, and
@@ -124,7 +127,7 @@ packages/
   classification/   classification shell
   analytics/        deterministic analytics shell
   observability/    logging and metrics shell
-  test-fixtures/    repository/configuration regression tests
+  test-fixtures/    repository/configuration regression tests and sanitized provider fixtures
 ```
 
 ## Quality commands

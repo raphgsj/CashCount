@@ -122,6 +122,10 @@ importers:
       zod:
         specifier: 4.4.3
         version: 4.4.3
+    devDependencies:
+      '@cashcount/test-fixtures':
+        specifier: workspace:*
+        version: link:../test-fixtures
 
   packages/test-fixtures: {}
 
