@@ -5,8 +5,9 @@ owner's financial data through a provider adapter, preserves normalized history 
 and exposes deterministic analytics to an authenticated web application and a read-only MCP
 server.
 
-The repository is currently at **PF-001: repository foundation**. It intentionally contains no
-financial logic, database schema, provider integration, authentication, or production secrets.
+The repository is currently complete through **PF-002: environment validation**. It intentionally
+contains no financial logic, database schema, provider integration, authentication implementation,
+or production secrets.
 
 ## Prerequisites
 
@@ -25,6 +26,12 @@ pnpm check
 ```
 
 Use `pnpm install` rather than `--frozen-lockfile` only when intentionally updating dependencies.
+Copy `.env.example` to the service-specific local environment file only when running an app, and
+fill only the variables that service consumes. The example intentionally contains no values.
+
+Every application validates its environment at startup through `@cashcount/config`. Production
+rejects the local database fallback, rejects the development authentication bypass, and detects
+credential reuse wherever both trust-boundary values are visible to the process.
 
 ## Workspace
 

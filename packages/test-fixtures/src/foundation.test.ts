@@ -49,4 +49,13 @@ describe('repository foundation', () => {
       },
     });
   });
+
+  it('keeps the environment example free of assigned values', () => {
+    const environmentLines = readFileSync(join(repositoryRoot, '.env.example'), 'utf8')
+      .split('\n')
+      .filter((line) => line.length > 0 && !line.startsWith('#'));
+
+    expect(environmentLines.length).toBeGreaterThan(0);
+    expect(environmentLines.every((line) => /^[A-Z][A-Z0-9_]*=$/.test(line))).toBe(true);
+  });
 });
