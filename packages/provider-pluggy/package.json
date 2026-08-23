@@ -22,7 +22,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "lint": "eslint src --max-warnings=0",
-    "test": "vitest run src/auth-client.test.ts src/data-client.test.ts src/fixture-contract.test.ts",
+    "test": "vitest run src/auth-client.test.ts src/data-client.test.ts src/fixture-contract.test.ts src/lifecycle-mapper.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   }
 }

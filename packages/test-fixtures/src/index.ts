@@ -4,6 +4,7 @@ export {
   pluggyFixtureIds,
   pluggyHistoryPages,
   pluggyItemLifecycleFixtures,
+  pluggyLifecycleMappingFixtures,
   pluggyReplacementFixture,
   pluggyTransactionMatrixBody,
   pluggyTransactionMatrixExpected,

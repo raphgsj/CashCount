@@ -17,13 +17,13 @@ import {
   type ProviderAccountDto,
   type ProviderBillDto,
   type ProviderConnectionDto,
-  type ProviderConnectionLocalStatus,
   type ProviderTransactionDto,
 } from '@cashcount/provider-core';
 import { isLosslessNumber, parse, type LosslessNumber } from 'lossless-json';
 import { z } from 'zod';
 
 import type { PluggyAuthenticatedHttpClient } from './authenticated-http-client.js';
+import { mapPluggyItemLifecycle } from './lifecycle-mapper.js';
 
 const idSchema = z.string().uuid();
 const textSchema = z.string().trim().min(1).max(1_000);
@@ -245,46 +245,17 @@ function lastDigits(value: string, minimum: number): string | null {
   return digits.length < minimum ? null : digits.slice(-4);
 }
 
-function initialLifecycle(item: RawItem): ProviderConnectionLocalStatus {
-  if (item.status === 'WAITING_USER_INPUT' || item.executionStatus === 'WAITING_USER_INPUT') {
-    return 'USER_INPUT_REQUIRED';
-  }
-  if (
-    item.executionStatus === 'WAITING_USER_ACTION' ||
-    item.executionStatus === 'USER_AUTHORIZATION_PENDING'
-  ) {
-    return 'USER_ACTION_REQUIRED';
-  }
-  if (
-    item.status === 'LOGIN_ERROR' ||
-    item.executionStatus === 'INVALID_CREDENTIALS' ||
-    item.executionStatus === 'ACCOUNT_CREDENTIALS_RESET' ||
-    item.executionStatus === 'USER_AUTHORIZATION_REVOKED'
-  ) {
-    return 'REAUTH_REQUIRED';
-  }
-  if (
-    item.status === 'UPDATING' ||
-    item.executionStatus === 'CREATED' ||
-    item.executionStatus.endsWith('_IN_PROGRESS')
-  ) {
-    return 'SYNCING';
-  }
-  if (
-    item.status === 'UPDATED' &&
-    (item.executionStatus === 'SUCCESS' || item.executionStatus === 'PARTIAL_SUCCESS')
-  ) {
-    return 'ACTIVE';
-  }
-  return 'PROVIDER_ERROR';
-}
-
 function mapConnection(item: RawItem): ProviderConnectionDto {
   return providerConnectionSchema.parse({
     externalConnectionId: item.id,
     externalConnectorId: String(safeInteger(item.connector.id)),
     displayName: item.connector.name,
-    localStatus: initialLifecycle(item),
+    localStatus: mapPluggyItemLifecycle({
+      errorCode: item.error?.code ?? null,
+      event: null,
+      executionStatus: item.executionStatus,
+      itemStatus: item.status,
+    }),
     itemStatus: item.status,
     executionStatus: item.executionStatus,
     errorCode: item.error?.code ?? null,

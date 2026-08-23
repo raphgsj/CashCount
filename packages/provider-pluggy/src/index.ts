@@ -18,5 +18,6 @@ export {
   type PluggyCreatedTransactionsHint,
   type PluggyDataClientOptions,
 } from './data-client.js';
+export { mapPluggyItemLifecycle, type PluggyItemLifecycleInput } from './lifecycle-mapper.js';
 
 export const packageName = '@cashcount/provider-pluggy' as const;

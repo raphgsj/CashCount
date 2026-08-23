@@ -35,9 +35,12 @@ record; the versioned implementation plan is the canonical specification.
 - PF-025 adds the complete sanitized Pluggy fixture matrix and verifies signs, currencies, nullable
   enrichment, lifecycle edges, bill children, observed history bounds, and replacement evidence at
   the provider-neutral adapter boundary.
-- The next ticket is PF-026, which completes the Pluggy Item lifecycle mapper. Do not imply that
-  queue worker behavior, product authentication, rule evaluation, financial policy or analytics
-  services, repositories, or product UI already exist.
+- PF-026 completes Phase 2 with an explicit Pluggy Item lifecycle mapper covering transitive,
+  success/partial-success, user-input/action, credential/consent, provider-error, deletion,
+  precedence-conflict, and unknown fail-closed cases.
+- The next ticket is PF-030, which implements versioned application encryption. Do not imply that
+  the import pipeline, queue worker behavior, product authentication, rule evaluation, analytics
+  services, general repositories, or product UI already exist.
 - ADRs 0008, 0009, and 0010 define mandatory credential, workspace, provider-identity, signed-amount,
   and bill-reconciliation behavior for subsequent tickets.
 - Update this section and the root README together whenever a PF ticket or phase is completed.
