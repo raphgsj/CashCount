@@ -198,6 +198,29 @@ describe('repository foundation', () => {
     expect(seed).toContain('Synthetic Personal Finance');
   });
 
+  it('defines the PF-020 exact money and financial-date boundary', () => {
+    const domainManifest = JSON.parse(
+      readFileSync(join(repositoryRoot, 'packages', 'domain', 'package.json'), 'utf8'),
+    );
+    const money = readFileSync(
+      join(repositoryRoot, 'packages', 'domain', 'src', 'money.ts'),
+      'utf8',
+    );
+    const dates = readFileSync(
+      join(repositoryRoot, 'packages', 'domain', 'src', 'dates.ts'),
+      'utf8',
+    );
+
+    expect(domainManifest.dependencies).toEqual({ 'decimal.js': '10.6.0' });
+    expect(money).toContain('class Money');
+    expect(money).toContain('toJSON(): MoneyJson');
+    expect(money).toContain('MoneyCurrencyMismatchError');
+    expect(money).not.toContain('parseFloat');
+    expect(dates).toContain('deriveFinancialDate');
+    expect(dates).toContain('Intl.DateTimeFormat');
+    expect(dates).toContain('parseBillForecastMonth');
+  });
+
   it.each(architectureDecisionRecords)('%s records a complete accepted decision', (fileName) => {
     const record = readFileSync(join(repositoryRoot, 'docs', 'adr', fileName), 'utf8');
 
@@ -265,14 +288,16 @@ describe('repository foundation', () => {
     const adrIndex = readFileSync(join(repositoryRoot, 'docs', 'adr', 'README.md'), 'utf8');
 
     expect(readme).toContain(
-      '**Phases 0 and 1 are complete (PF-001 through PF-006 and PF-010 through PF-019):**',
+      '**Phases 0 and 1 are complete, and Phase 2 is in progress through PF-020:**',
     );
-    expect(readme).toContain('**PF-020: money and date types**');
+    expect(readme).toContain('**PF-021:');
+    expect(readme).toContain('transaction policy**');
     expect(readme).toContain('configuration-validated shell; future Next.js web application');
     expect(agentInstructions).toContain('## Current implementation state');
     expect(agentInstructions).toContain('Phase 0 is complete: PF-001 through PF-006.');
     expect(agentInstructions).toContain('Phase 1 is complete: PF-010 through PF-019');
-    expect(agentInstructions).toContain('The next ticket is PF-020');
+    expect(agentInstructions).toContain('PF-020 starts Phase 2');
+    expect(agentInstructions).toContain('The next ticket is PF-021');
     expect(agentInstructions).toContain('Update this section and the root README together');
     expect(adrIndex).toContain('These records complete the');
     expect(adrIndex).toContain('Phase 0 decision backlog');

@@ -22,7 +22,9 @@ record; the versioned implementation plan is the canonical specification.
   Transaction user state has a workspace-required repository with explicit override modes,
   optimistic concurrency, and canonical effective reads. Bill evidence uses configurable currency
   tolerances, one active match per payment/bank transaction, and validated count-once reconciliation.
-- The next ticket is PF-020, which starts Phase 2 with Decimal money and timezone/date types. Do not
+- PF-020 starts Phase 2 with Decimal-backed money, string-only monetary JSON, signed amount
+  evidence, strict bank dates/bill months, and arbitrary-IANA-timezone local-date derivation.
+- The next ticket is PF-021, which implements transaction spending/cash-flow policy. Do not
   imply that provider
   integration, queue worker behavior, authentication implementation, rule evaluation, financial
   policy or analytics services, repositories, or product UI already exist.

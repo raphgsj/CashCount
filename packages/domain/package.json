@@ -13,6 +13,10 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "lint": "eslint src --max-warnings=0",
+    "test": "vitest run src/money.test.ts src/dates.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "decimal.js": "10.6.0"
   }
 }

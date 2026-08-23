@@ -5,7 +5,7 @@ owner's financial data through a provider adapter, preserves normalized history 
 and exposes deterministic analytics to an authenticated web application and a read-only MCP
 server.
 
-**Phases 0 and 1 are complete (PF-001 through PF-006 and PF-010 through PF-019):**
+**Phases 0 and 1 are complete, and Phase 2 is in progress through PF-020:**
 
 - **PF-001** established the monorepo and application/package foundations.
 - **PF-002** added validated application environments and production safety constraints.
@@ -32,14 +32,16 @@ server.
   effective-view reads.
 - **PF-019** finalized bill payment/finance-charge evidence with configurable currency tolerances,
   active-match uniqueness, amount/date/role validation, and count-once reconciliation views.
+- **PF-020** added exact Decimal-backed money/value types, string-only monetary JSON, signed
+  provider/account-currency evidence, strict bank dates and bill months, and arbitrary-IANA-timezone
+  local financial-date derivation.
 
 PF-003 through PF-006 are architecture-documentation milestones; executable implementation now
-extends through PF-019's complete Phase 1 identity, workspace, provider/synchronization,
-financial-core,
-intelligence, and initial query-view database foundation. The repository intentionally contains no
-rule evaluator, domain financial-policy implementation, analytics service, general financial-data
-repositories, provider API integration, queue worker implementation, authentication implementation,
-product UI, or production secrets. The next ticket starts Phase 2: **PF-020: money and date types**.
+extends through PF-020's complete database foundation and initial domain value types. The repository
+intentionally contains no rule evaluator, transaction financial-policy implementation, analytics
+service, general financial-data repositories, provider API integration, queue worker implementation,
+authentication implementation, product UI, or production secrets. The next ticket is **PF-021:
+transaction policy**.
 
 The accepted decisions are indexed in [`docs/adr/`](docs/adr/README.md). In particular, ADRs 0008
 through 0010 are the implementation contracts for credential boundaries, workspace integrity, and
@@ -104,7 +106,7 @@ packages/
   config/     validated environment and shared configuration
   contracts/  shell for future runtime schemas and public types
   db/         Drizzle schema, migrations, and canonical financial query views; future repositories
-  domain/     shell for future provider-neutral financial policy
+  domain/     exact money/date types; future provider-neutral transaction policy
   provider-core/    provider-neutral adapter shell
   provider-pluggy/  Pluggy adapter shell
   classification/   classification shell
