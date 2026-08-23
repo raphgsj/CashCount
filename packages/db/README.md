@@ -7,7 +7,8 @@ adds `provider_connection`, encrypted `provider_raw_object` evidence, the worksp
 coverage, credit-card bills and reconciliation evidence, categories and merchants, exact-numeric
 provider/system transactions, separately owned transaction state, provider-identity continuity, and
 transaction revisions. Repositories, provider integration, queue execution, financial policy,
-effective/analytics views, and product behavior remain future work.
+effective/analytics views, and product behavior remain future work. PF-015 adds classification
+rules/decisions, installment and recurring series, transaction tags, and bounded audit events.
 
 From the repository root:
 
@@ -26,16 +27,15 @@ requires `DATABASE_URL` and rejects `LOCAL_DATABASE_URL`.
 uses reserved example data and refuses to run when `NODE_ENV=production`.
 
 The integration tests create uniquely named empty databases, apply the complete migration set twice,
-verify constraints and the synthetic seed, exercise PF-011 through PF-013 upgrade paths, and prove
+verify constraints and the synthetic seed, exercise PF-011 through PF-014 upgrade paths, and prove
 provider identity scope, cross-workspace rejection, encrypted-envelope checks, webhook idempotency,
 active queue dedupe, lease-state constraints, category visibility/immutability, exact numeric
-round-trips, transaction continuity, and bill reconciliation account roles. Each temporary database
-is dropped afterward. The database user running this CI-only test must be allowed to create and drop
-databases.
+round-trips, transaction continuity, bill reconciliation account roles, intelligence evaluation
+idempotency, series scope, tag scope, and bounded audit records. Each temporary database is dropped
+afterward. The database user running this CI-only test must be allowed to create and drop databases.
 
-PF-014 includes nullable installment/recurring series identifiers as part of the canonical
-transaction shape, but a database constraint keeps both null until PF-015 creates their parents and
-replaces that temporary guard with composite workspace foreign keys.
+PF-015 replaces PF-014's temporary null-only series guard with composite workspace foreign keys to
+the installment and recurring parents.
 
 Provider raw objects and webhook bodies are stored only as versioned encrypted envelopes. The schema
 does not implement encryption or provider calls; later write paths must use the accepted AES-256-GCM

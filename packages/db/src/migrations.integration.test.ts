@@ -148,13 +148,13 @@ describe('database migrations', () => {
             client,
             'select count(*)::integer as count from drizzle.__drizzle_migrations',
           ),
-        ).toBe(4);
+        ).toBe(5);
         expect(
           await queryCount(
             client,
             "select count(*)::integer as count from pg_tables where schemaname = 'public'",
           ),
-        ).toBe(20);
+        ).toBe(27);
         expect(
           await queryCount(
             client,
@@ -729,10 +729,212 @@ describe('database migrations', () => {
     });
   }, 30_000);
 
+  it('enforces intelligence idempotency, series scope, tag scope, and bounded audits', async () => {
+    await withTemporaryDatabase(async (connectionString) => {
+      await runMigrations(connectionString);
+      await seedSyntheticIdentity(connectionString, 'test');
+
+      const client = new Client({ connectionString });
+      const workspaceA = syntheticIdentitySeed.workspace.id;
+      const workspaceB = '20000000-0000-4000-8000-000000000002';
+      const connectionA = '40000000-0000-4000-8000-000000000001';
+      const connectionB = '40000000-0000-4000-8000-000000000002';
+      const accountA = '60000000-0000-4000-8000-000000000001';
+      const accountB = '60000000-0000-4000-8000-000000000002';
+      const categoryA = '80000000-0000-4000-8000-000000000001';
+      const categoryB = '80000000-0000-4000-8000-000000000002';
+      const merchantA = '90000000-0000-4000-8000-000000000001';
+      const merchantB = '90000000-0000-4000-8000-000000000002';
+      const transactionA = 'a0000000-0000-4000-8000-000000000001';
+      const transactionB = 'a0000000-0000-4000-8000-000000000002';
+      const ruleA = 'b0000000-0000-4000-8000-000000000001';
+      const ruleB = 'b0000000-0000-4000-8000-000000000002';
+      const installmentA = 'c0000000-0000-4000-8000-000000000001';
+      const installmentB = 'c0000000-0000-4000-8000-000000000002';
+      const recurringA = 'd0000000-0000-4000-8000-000000000001';
+      const tagA = 'e0000000-0000-4000-8000-000000000001';
+      const tagB = 'e0000000-0000-4000-8000-000000000002';
+      const fingerprint = 'c'.repeat(64);
+
+      try {
+        await client.connect();
+        await client.query(`insert into workspace (id, name) values ($1, 'Second Workspace')`, [
+          workspaceB,
+        ]);
+        await client.query(
+          `insert into provider_connection (id, workspace_id, provider, external_connection_id, external_connector_id, display_name) values ($1, $2, 'PLUGGY', 'item-a', 'connector', 'Connection A'), ($3, $4, 'PLUGGY', 'item-b', 'connector', 'Connection B')`,
+          [connectionA, workspaceA, connectionB, workspaceB],
+        );
+        await client.query(
+          `insert into financial_account (id, workspace_id, provider_connection_id, provider, external_account_id, account_type, name, institution_name, currency) values ($1, $2, $3, 'PLUGGY', 'account-a', 'CREDIT_CARD', 'Card A', 'Synthetic Bank', 'BRL'), ($4, $5, $6, 'PLUGGY', 'account-b', 'CREDIT_CARD', 'Card B', 'Synthetic Bank', 'BRL')`,
+          [accountA, workspaceA, connectionA, accountB, workspaceB, connectionB],
+        );
+        await client.query(
+          `insert into category (id, workspace_id, code, kind, name_en, name_pt_br) values ($1, $2, 'custom.80000000-0000-4000-8000-000000000001', 'EXPENSE', 'Category A', 'Categoria A'), ($3, $4, 'custom.80000000-0000-4000-8000-000000000002', 'EXPENSE', 'Category B', 'Categoria B')`,
+          [categoryA, workspaceA, categoryB, workspaceB],
+        );
+        await client.query(
+          `insert into merchant (id, workspace_id, canonical_name, normalized_key) values ($1, $2, 'Merchant A', 'merchant-a'), ($3, $4, 'Merchant B', 'merchant-b')`,
+          [merchantA, workspaceA, merchantB, workspaceB],
+        );
+        await insertSyntheticTransaction(client, {
+          accountId: accountA,
+          id: transactionA,
+          providerTransactionId: 'transaction-a',
+          workspaceId: workspaceA,
+        });
+        await insertSyntheticTransaction(client, {
+          accountId: accountB,
+          id: transactionB,
+          providerTransactionId: 'transaction-b',
+          workspaceId: workspaceB,
+        });
+
+        await client.query(
+          `insert into classification_rule (id, workspace_id, name, priority, conditions, actions, source) values ($1, $2, 'Rule A', 10, '{"all":[]}', '{"setFinancialRole":"PURCHASE"}', 'USER'), ($3, $4, 'Rule B', 10, '{"all":[]}', '{"setFinancialRole":"PURCHASE"}', 'USER')`,
+          [ruleA, workspaceA, ruleB, workspaceB],
+        );
+        await expect(
+          client.query(
+            `insert into classification_rule (workspace_id, name, conditions, actions, source) values ($1, 'Invalid JSON Shape', '[]', '{}', 'USER')`,
+            [workspaceA],
+          ),
+        ).rejects.toMatchObject({ code: '23514' });
+        await expect(
+          client.query(
+            `insert into classification_rule (workspace_id, name, conditions, actions, source, hit_count) values ($1, 'Invalid Count', '{}', '{}', 'USER', -1)`,
+            [workspaceA],
+          ),
+        ).rejects.toMatchObject({ code: '23514' });
+
+        await client.query(
+          `insert into classification_decision (workspace_id, financial_transaction_id, source, source_reference, classification_rule_id, category_id, merchant_id, financial_role, confidence, input_fingerprint, rationale, selected) values ($1, $2, 'RULE', $3, $4, $5, $6, 'PURCHASE', '0.9900', $7, 'Synthetic deterministic decision', true)`,
+          [workspaceA, transactionA, ruleA, ruleA, categoryA, merchantA, fingerprint],
+        );
+        await expect(
+          client.query(
+            `insert into classification_decision (workspace_id, financial_transaction_id, source, source_reference, classification_rule_id, input_fingerprint, rationale) values ($1, $2, 'RULE', $3, $4, $5, 'Duplicate')`,
+            [workspaceA, transactionA, ruleA, ruleA, fingerprint],
+          ),
+        ).rejects.toMatchObject({ code: '23505' });
+        await expect(
+          client.query(
+            `insert into classification_decision (workspace_id, financial_transaction_id, source, source_reference, classification_rule_id, input_fingerprint, rationale) values ($1, $2, 'RULE', $3, $4, $5, 'Cross transaction')`,
+            [workspaceA, transactionB, ruleA, ruleA, 'd'.repeat(64)],
+          ),
+        ).rejects.toMatchObject({ code: '23503' });
+        await expect(
+          client.query(
+            `insert into classification_decision (workspace_id, financial_transaction_id, source, source_reference, classification_rule_id, input_fingerprint, rationale) values ($1, $2, 'RULE', $3, $4, $5, 'Cross rule')`,
+            [workspaceA, transactionA, ruleB, ruleB, 'e'.repeat(64)],
+          ),
+        ).rejects.toMatchObject({ code: '23503' });
+        await expect(
+          client.query(
+            `insert into classification_decision (workspace_id, financial_transaction_id, source, source_reference, category_id, input_fingerprint, rationale) values ($1, $2, 'PROVIDER', 'PLUGGY', $3, $4, 'Cross category')`,
+            [workspaceA, transactionA, categoryB, 'f'.repeat(64)],
+          ),
+        ).rejects.toMatchObject({ code: '23514' });
+        await expect(
+          client.query(
+            `insert into classification_decision (workspace_id, financial_transaction_id, source, source_reference, input_fingerprint, rationale) values ($1, $2, 'RULE', 'missing-rule', $3, 'Missing rule')`,
+            [workspaceA, transactionA, '1'.repeat(64)],
+          ),
+        ).rejects.toMatchObject({ code: '23514' });
+
+        await client.query(
+          `insert into installment_series (id, workspace_id, financial_account_id, merchant_id, currency, total_installments, highest_confirmed_installment, estimated_installment_amount, original_total_amount, status) values ($1, $2, $3, $4, 'BRL', 12, 3, '100.000000', '1200.000000', 'CONFIRMED'), ($5, $6, $7, $8, 'BRL', 6, 1, '50.000000', '300.000000', 'CONFIRMED')`,
+          [
+            installmentA,
+            workspaceA,
+            accountA,
+            merchantA,
+            installmentB,
+            workspaceB,
+            accountB,
+            merchantB,
+          ],
+        );
+        await expect(
+          client.query(
+            `insert into installment_series (workspace_id, financial_account_id, currency, total_installments) values ($1, $2, 'BRL', 3)`,
+            [workspaceA, accountB],
+          ),
+        ).rejects.toMatchObject({ code: '23503' });
+
+        await client.query(
+          `insert into recurring_series (id, workspace_id, merchant_id, category_id, cadence, expected_interval_days, currency, amount_min, amount_max, amount_average, last_occurrence_date, next_expected_date, confidence, status) values ($1, $2, $3, $4, 'MONTHLY', 30, 'BRL', '90.000000', '110.000000', '100.000000', '2026-08-01', '2026-09-01', '0.9500', 'CONFIRMED')`,
+          [recurringA, workspaceA, merchantA, categoryA],
+        );
+        await expect(
+          client.query(
+            `insert into recurring_series (workspace_id, merchant_id, category_id, cadence, expected_interval_days, currency, amount_min, amount_max, amount_average, last_occurrence_date, confidence) values ($1, $2, $3, 'MONTHLY', 30, 'BRL', '90', '110', '100', '2026-08-01', '0.9')`,
+            [workspaceA, merchantA, categoryB],
+          ),
+        ).rejects.toMatchObject({ code: '23514' });
+        await expect(
+          client.query(
+            `insert into recurring_series (workspace_id, merchant_id, cadence, expected_interval_days, currency, amount_min, amount_max, amount_average, last_occurrence_date, confidence) values ($1, $2, 'MONTHLY', 30, 'BRL', '100', '90', '95', '2026-08-01', '0.9')`,
+            [workspaceA, merchantA],
+          ),
+        ).rejects.toMatchObject({ code: '23514' });
+
+        await client.query(
+          `update financial_transaction set installment_series_id = $1, recurring_series_id = $2 where id = $3`,
+          [installmentA, recurringA, transactionA],
+        );
+        await expect(
+          client.query(
+            `update financial_transaction set installment_series_id = $1 where id = $2`,
+            [installmentB, transactionA],
+          ),
+        ).rejects.toMatchObject({ code: '23503' });
+
+        await client.query(
+          `insert into tag (id, workspace_id, name, normalized_name) values ($1, $2, 'Work', 'work'), ($3, $4, 'Work', 'work')`,
+          [tagA, workspaceA, tagB, workspaceB],
+        );
+        await client.query(
+          `insert into transaction_tag (workspace_id, financial_transaction_id, tag_id) values ($1, $2, $3)`,
+          [workspaceA, transactionA, tagA],
+        );
+        await expect(
+          client.query(
+            `insert into transaction_tag (workspace_id, financial_transaction_id, tag_id) values ($1, $2, $3)`,
+            [workspaceA, transactionA, tagA],
+          ),
+        ).rejects.toMatchObject({ code: '23505' });
+        await expect(
+          client.query(
+            `insert into transaction_tag (workspace_id, financial_transaction_id, tag_id) values ($1, $2, $3)`,
+            [workspaceA, transactionA, tagB],
+          ),
+        ).rejects.toMatchObject({ code: '23503' });
+
+        await client.query(
+          `insert into audit_event (actor_type, event_type, details) values ('SYSTEM', 'SECRET_ROTATION_MARKER', '{"result":"synthetic-success"}')`,
+        );
+        await expect(
+          client.query(
+            `insert into audit_event (workspace_id, actor_type, event_type) values ('30000000-0000-4000-8000-000000000001', 'SYSTEM', 'INVALID_WORKSPACE')`,
+          ),
+        ).rejects.toMatchObject({ code: '23503' });
+        await expect(
+          client.query(
+            `insert into audit_event (actor_type, event_type, details) values ('SYSTEM', 'INVALID_DETAILS', '[]')`,
+          ),
+        ).rejects.toMatchObject({ code: '23514' });
+      } finally {
+        await client.end();
+      }
+    });
+  }, 30_000);
+
   it.each([
     { entryCount: 1, expectedTables: 0, ticket: 'PF-011' },
     { entryCount: 2, expectedTables: 3, ticket: 'PF-012' },
     { entryCount: 3, expectedTables: 8, ticket: 'PF-013' },
+    { entryCount: 4, expectedTables: 20, ticket: 'PF-014' },
   ])(
     'upgrades a $ticket database without reapplying prior migrations',
     async ({ entryCount, expectedTables }) => {
@@ -773,13 +975,13 @@ describe('database migrations', () => {
                 afterUpgradeClient,
                 'select count(*)::integer as count from drizzle.__drizzle_migrations',
               ),
-            ).toBe(4);
+            ).toBe(5);
             expect(
               await queryCount(
                 afterUpgradeClient,
                 "select count(*)::integer as count from pg_tables where schemaname = 'public'",
               ),
-            ).toBe(20);
+            ).toBe(27);
           } finally {
             await afterUpgradeClient.end();
           }

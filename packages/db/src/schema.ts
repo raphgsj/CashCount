@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm';
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 import {
   boolean,
+  bigint,
   char,
   check,
   customType,
@@ -806,6 +807,20 @@ export const financialTransaction = pgTable(
     })
       .onDelete('restrict')
       .onUpdate('restrict'),
+    foreignKey({
+      columns: [table.workspaceId, table.installmentSeriesId],
+      foreignColumns: [installmentSeries.workspaceId, installmentSeries.id],
+      name: 'financial_transaction_workspace_installment_series_fk',
+    })
+      .onDelete('restrict')
+      .onUpdate('restrict'),
+    foreignKey({
+      columns: [table.workspaceId, table.recurringSeriesId],
+      foreignColumns: [recurringSeries.workspaceId, recurringSeries.id],
+      name: 'financial_transaction_workspace_recurring_series_fk',
+    })
+      .onDelete('restrict')
+      .onUpdate('restrict'),
     check('financial_transaction_provider_ck', sql`${table.provider} = 'PLUGGY'`),
     check(
       'financial_transaction_provider_transaction_id_nonempty_ck',
@@ -874,10 +889,6 @@ export const financialTransaction = pgTable(
     check(
       'financial_transaction_transfer_pair_not_self_ck',
       sql`${table.transferPairId} is null or ${table.transferPairId} <> ${table.id}`,
-    ),
-    check(
-      'financial_transaction_future_series_unset_ck',
-      sql`${table.installmentSeriesId} is null and ${table.recurringSeriesId} is null`,
     ),
     check(
       'financial_transaction_bounded_text_ck',
@@ -1246,5 +1257,318 @@ export const billPaymentReconciliation = pgTable(
       'bill_payment_reconciliation_matched_at_ck',
       sql`${table.matchStatus} not in ('AUTO_MATCHED', 'USER_CONFIRMED') or ${table.matchedAt} is not null`,
     ),
+  ],
+);
+
+export const classificationRule = pgTable(
+  'classification_rule',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    workspaceId: uuid('workspace_id')
+      .notNull()
+      .references(() => workspace.id, { onDelete: 'restrict', onUpdate: 'restrict' }),
+    name: text('name').notNull(),
+    priority: integer('priority').notNull().default(0),
+    conditions: jsonb('conditions').$type<Record<string, unknown>>().notNull(),
+    actions: jsonb('actions').$type<Record<string, unknown>>().notNull(),
+    stopProcessing: boolean('stop_processing').notNull().default(true),
+    source: text('source').notNull(),
+    isActive: boolean('is_active').notNull().default(true),
+    hitCount: bigint('hit_count', { mode: 'number' }).notNull().default(0),
+    lastHitAt: timestamp('last_hit_at', { withTimezone: true }),
+    ...timestamps(),
+  },
+  (table) => [
+    unique('classification_rule_workspace_id_id_uq').on(table.workspaceId, table.id),
+    index('classification_rule_workspace_active_priority_idx').on(
+      table.workspaceId,
+      table.isActive,
+      table.priority.desc(),
+      table.createdAt,
+      table.id,
+    ),
+    check('classification_rule_name_nonempty_ck', sql`length(trim(${table.name})) > 0`),
+    check(
+      'classification_rule_source_ck',
+      sql`${table.source} in ('USER', 'SYSTEM_SUGGESTION', 'IMPORT')`,
+    ),
+    check('classification_rule_hit_count_ck', sql`${table.hitCount} >= 0`),
+    check(
+      'classification_rule_json_shape_ck',
+      sql`jsonb_typeof(${table.conditions}) = 'object' and jsonb_typeof(${table.actions}) = 'object'`,
+    ),
+    check(
+      'classification_rule_json_length_ck',
+      sql`octet_length(${table.conditions}::text) <= 20000 and octet_length(${table.actions}::text) <= 20000`,
+    ),
+  ],
+);
+
+export const installmentSeries = pgTable(
+  'installment_series',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    workspaceId: uuid('workspace_id')
+      .notNull()
+      .references(() => workspace.id, { onDelete: 'restrict', onUpdate: 'restrict' }),
+    financialAccountId: uuid('financial_account_id').notNull(),
+    merchantId: uuid('merchant_id'),
+    currency: char('currency', { length: 3 }).notNull(),
+    totalInstallments: integer('total_installments').notNull(),
+    highestConfirmedInstallment: integer('highest_confirmed_installment').notNull().default(0),
+    estimatedInstallmentAmount: numeric('estimated_installment_amount', {
+      precision: 20,
+      scale: 6,
+    }),
+    originalTotalAmount: numeric('original_total_amount', { precision: 20, scale: 6 }),
+    purchaseDate: date('purchase_date'),
+    status: text('status').notNull().default('CANDIDATE'),
+    ...timestamps(),
+  },
+  (table) => [
+    unique('installment_series_workspace_id_id_uq').on(table.workspaceId, table.id),
+    foreignKey({
+      columns: [table.workspaceId, table.financialAccountId],
+      foreignColumns: [financialAccount.workspaceId, financialAccount.id],
+      name: 'installment_series_workspace_financial_account_fk',
+    })
+      .onDelete('restrict')
+      .onUpdate('restrict'),
+    foreignKey({
+      columns: [table.workspaceId, table.merchantId],
+      foreignColumns: [merchant.workspaceId, merchant.id],
+      name: 'installment_series_workspace_merchant_fk',
+    })
+      .onDelete('restrict')
+      .onUpdate('restrict'),
+    check('installment_series_currency_ck', sql`${table.currency} ~ '^[A-Z]{3}$'`),
+    check('installment_series_total_installments_ck', sql`${table.totalInstallments} > 0`),
+    check(
+      'installment_series_progress_ck',
+      sql`${table.highestConfirmedInstallment} between 0 and ${table.totalInstallments}`,
+    ),
+    check(
+      'installment_series_amounts_ck',
+      sql`(${table.estimatedInstallmentAmount} is null or ${table.estimatedInstallmentAmount} >= 0) and (${table.originalTotalAmount} is null or ${table.originalTotalAmount} >= 0)`,
+    ),
+    check(
+      'installment_series_status_ck',
+      sql`${table.status} in ('CANDIDATE', 'CONFIRMED', 'NEEDS_REVIEW', 'COMPLETED', 'REJECTED')`,
+    ),
+  ],
+);
+
+export const recurringSeries = pgTable(
+  'recurring_series',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    workspaceId: uuid('workspace_id')
+      .notNull()
+      .references(() => workspace.id, { onDelete: 'restrict', onUpdate: 'restrict' }),
+    merchantId: uuid('merchant_id').notNull(),
+    categoryId: uuid('category_id').references(() => category.id, {
+      onDelete: 'restrict',
+      onUpdate: 'restrict',
+    }),
+    cadence: text('cadence').notNull(),
+    expectedIntervalDays: integer('expected_interval_days').notNull(),
+    currency: char('currency', { length: 3 }).notNull(),
+    amountMin: numeric('amount_min', { precision: 20, scale: 6 }).notNull(),
+    amountMax: numeric('amount_max', { precision: 20, scale: 6 }).notNull(),
+    amountAverage: numeric('amount_average', { precision: 20, scale: 6 }).notNull(),
+    lastOccurrenceDate: date('last_occurrence_date').notNull(),
+    nextExpectedDate: date('next_expected_date'),
+    confidence: numeric('confidence', { precision: 5, scale: 4 }).notNull(),
+    status: text('status').notNull().default('CANDIDATE'),
+    ...timestamps(),
+  },
+  (table) => [
+    unique('recurring_series_workspace_id_id_uq').on(table.workspaceId, table.id),
+    foreignKey({
+      columns: [table.workspaceId, table.merchantId],
+      foreignColumns: [merchant.workspaceId, merchant.id],
+      name: 'recurring_series_workspace_merchant_fk',
+    })
+      .onDelete('restrict')
+      .onUpdate('restrict'),
+    check(
+      'recurring_series_cadence_ck',
+      sql`${table.cadence} in ('WEEKLY', 'MONTHLY', 'QUARTERLY', 'ANNUAL', 'CUSTOM')`,
+    ),
+    check('recurring_series_interval_ck', sql`${table.expectedIntervalDays} > 0`),
+    check('recurring_series_currency_ck', sql`${table.currency} ~ '^[A-Z]{3}$'`),
+    check(
+      'recurring_series_amounts_ck',
+      sql`${table.amountMin} >= 0 and ${table.amountAverage} between ${table.amountMin} and ${table.amountMax}`,
+    ),
+    check('recurring_series_confidence_ck', sql`${table.confidence} between 0 and 1`),
+    check(
+      'recurring_series_status_ck',
+      sql`${table.status} in ('CANDIDATE', 'CONFIRMED', 'REJECTED', 'ENDED')`,
+    ),
+  ],
+);
+
+export const classificationDecision = pgTable(
+  'classification_decision',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    workspaceId: uuid('workspace_id')
+      .notNull()
+      .references(() => workspace.id, { onDelete: 'restrict', onUpdate: 'restrict' }),
+    financialTransactionId: uuid('financial_transaction_id').notNull(),
+    source: text('source').notNull(),
+    sourceReference: text('source_reference').notNull(),
+    classificationRuleId: uuid('classification_rule_id'),
+    categoryId: uuid('category_id').references(() => category.id, {
+      onDelete: 'restrict',
+      onUpdate: 'restrict',
+    }),
+    merchantId: uuid('merchant_id'),
+    financialRole: text('financial_role'),
+    confidence: numeric('confidence', { precision: 5, scale: 4 }),
+    inputFingerprint: char('input_fingerprint', { length: 64 }).notNull(),
+    rationale: text('rationale').notNull(),
+    selected: boolean('selected').notNull().default(false),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    unique('classification_decision_workspace_id_id_uq').on(table.workspaceId, table.id),
+    unique('classification_decision_evaluation_uq').on(
+      table.workspaceId,
+      table.financialTransactionId,
+      table.source,
+      table.sourceReference,
+      table.inputFingerprint,
+    ),
+    foreignKey({
+      columns: [table.workspaceId, table.financialTransactionId],
+      foreignColumns: [financialTransaction.workspaceId, financialTransaction.id],
+      name: 'classification_decision_workspace_transaction_fk',
+    })
+      .onDelete('restrict')
+      .onUpdate('restrict'),
+    foreignKey({
+      columns: [table.workspaceId, table.classificationRuleId],
+      foreignColumns: [classificationRule.workspaceId, classificationRule.id],
+      name: 'classification_decision_workspace_rule_fk',
+    })
+      .onDelete('restrict')
+      .onUpdate('restrict'),
+    foreignKey({
+      columns: [table.workspaceId, table.merchantId],
+      foreignColumns: [merchant.workspaceId, merchant.id],
+      name: 'classification_decision_workspace_merchant_fk',
+    })
+      .onDelete('restrict')
+      .onUpdate('restrict'),
+    check(
+      'classification_decision_source_ck',
+      sql`${table.source} in ('RULE', 'MERCHANT', 'PROVIDER', 'MODEL', 'USER')`,
+    ),
+    check(
+      'classification_decision_source_reference_nonempty_ck',
+      sql`length(trim(${table.sourceReference})) > 0`,
+    ),
+    check(
+      'classification_decision_rule_source_ck',
+      sql`(${table.source} = 'RULE' and ${table.classificationRuleId} is not null) or (${table.source} <> 'RULE' and ${table.classificationRuleId} is null)`,
+    ),
+    check(
+      'classification_decision_financial_role_ck',
+      sql`${table.financialRole} is null or ${table.financialRole} in ('PURCHASE', 'INCOME', 'TRANSFER', 'CARD_BILL_PAYMENT', 'REFUND', 'FEE', 'TAX', 'CASH_WITHDRAWAL', 'ADJUSTMENT', 'INVESTMENT_MOVEMENT', 'CREDIT', 'UNKNOWN_CREDIT', 'UNKNOWN')`,
+    ),
+    check(
+      'classification_decision_confidence_ck',
+      sql`${table.confidence} is null or ${table.confidence} between 0 and 1`,
+    ),
+    check(
+      'classification_decision_input_fingerprint_ck',
+      sql`${table.inputFingerprint} ~ '^[0-9a-f]{64}$'`,
+    ),
+    check(
+      'classification_decision_rationale_length_ck',
+      sql`length(${table.rationale}) between 1 and 1000`,
+    ),
+  ],
+);
+
+export const tag = pgTable(
+  'tag',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    workspaceId: uuid('workspace_id')
+      .notNull()
+      .references(() => workspace.id, { onDelete: 'restrict', onUpdate: 'restrict' }),
+    name: text('name').notNull(),
+    normalizedName: text('normalized_name').notNull(),
+    ...timestamps(),
+  },
+  (table) => [
+    unique('tag_workspace_id_id_uq').on(table.workspaceId, table.id),
+    unique('tag_workspace_normalized_name_uq').on(table.workspaceId, table.normalizedName),
+    check('tag_name_nonempty_ck', sql`length(trim(${table.name})) > 0`),
+    check('tag_normalized_name_nonempty_ck', sql`length(trim(${table.normalizedName})) > 0`),
+  ],
+);
+
+export const transactionTag = pgTable(
+  'transaction_tag',
+  {
+    workspaceId: uuid('workspace_id')
+      .notNull()
+      .references(() => workspace.id, { onDelete: 'restrict', onUpdate: 'restrict' }),
+    financialTransactionId: uuid('financial_transaction_id').notNull(),
+    tagId: uuid('tag_id').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.workspaceId, table.financialTransactionId, table.tagId],
+      name: 'transaction_tag_pk',
+    }),
+    foreignKey({
+      columns: [table.workspaceId, table.financialTransactionId],
+      foreignColumns: [financialTransaction.workspaceId, financialTransaction.id],
+      name: 'transaction_tag_workspace_transaction_fk',
+    })
+      .onDelete('restrict')
+      .onUpdate('restrict'),
+    foreignKey({
+      columns: [table.workspaceId, table.tagId],
+      foreignColumns: [tag.workspaceId, tag.id],
+      name: 'transaction_tag_workspace_tag_fk',
+    })
+      .onDelete('restrict')
+      .onUpdate('restrict'),
+  ],
+);
+
+export const auditEvent = pgTable(
+  'audit_event',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    workspaceId: uuid('workspace_id').references(() => workspace.id, {
+      onDelete: 'restrict',
+      onUpdate: 'restrict',
+    }),
+    actorType: text('actor_type').notNull(),
+    actorId: text('actor_id'),
+    eventType: text('event_type').notNull(),
+    targetType: text('target_type'),
+    targetId: text('target_id'),
+    details: jsonb('details').$type<Record<string, unknown>>().notNull().default(emptyJsonObject),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('audit_event_workspace_created_idx').on(table.workspaceId, table.createdAt.desc()),
+    index('audit_event_type_created_idx').on(table.eventType, table.createdAt.desc()),
+    check(
+      'audit_event_actor_type_ck',
+      sql`${table.actorType} in ('USER', 'SYSTEM', 'WORKER', 'MCP', 'ANONYMOUS')`,
+    ),
+    check('audit_event_event_type_nonempty_ck', sql`length(trim(${table.eventType})) > 0`),
+    check('audit_event_details_shape_ck', sql`jsonb_typeof(${table.details}) = 'object'`),
+    check('audit_event_details_length_ck', sql`octet_length(${table.details}::text) <= 20000`),
   ],
 );
