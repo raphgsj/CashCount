@@ -19,6 +19,11 @@ PF-018 adds the first deliberately narrow repository: every transaction user-sta
 requires `workspaceId`; updates serialize on the owning transaction, distinguish missing rows from
 stale versions, implement explicit `SET`/`CLEAR`/`INHERIT`, and read effective values only from the
 canonical view. Provider synchronization has no user-state mutation method.
+PF-019 completes the Phase 1 bill-evidence boundary. A global tolerance table is seeded only for BRL
+at `0.01`; other currencies require an explicit row. Active reconciliation validates compatible
+currency/amount, a two-day date window, effective bill-payment role, deposit-account outflow, and a
+confirming actor for user decisions. Partial unique indexes prevent one payment or bank transaction
+from participating in multiple active matches, while candidates/rejections remain retained.
 
 From the repository root:
 
@@ -37,7 +42,8 @@ requires `DATABASE_URL` and rejects `LOCAL_DATABASE_URL`.
 uses reserved example data and refuses to run when `NODE_ENV=production`.
 
 The integration tests create uniquely named empty databases, apply the complete migration set twice,
-verify constraints and the synthetic seed, exercise PF-011 through PF-015 upgrade paths, and prove
+verify constraints and the synthetic seed, exercise every migration-bearing PF-011 through PF-017
+upgrade path, and prove
 provider identity scope, cross-workspace rejection, encrypted-envelope checks, webhook idempotency,
 active queue dedupe, lease-state constraints, category visibility/immutability, exact numeric
 round-trips, transaction continuity, bill reconciliation account roles, intelligence evaluation

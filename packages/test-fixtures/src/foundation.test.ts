@@ -109,7 +109,7 @@ describe('repository foundation', () => {
     }
   });
 
-  it('defines the PF-018 transaction user-state boundary', () => {
+  it('defines the PF-019 Phase 1 database boundary', () => {
     const schema = readFileSync(join(repositoryRoot, 'packages', 'db', 'src', 'schema.ts'), 'utf8');
     const seed = readFileSync(join(repositoryRoot, 'packages', 'db', 'src', 'seed.ts'), 'utf8');
     const viewsMigration = readFileSync(
@@ -122,6 +122,10 @@ describe('repository foundation', () => {
     );
     const userStateRepository = readFileSync(
       join(repositoryRoot, 'packages', 'db', 'src', 'transaction-user-state-repository.ts'),
+      'utf8',
+    );
+    const billReconciliationMigration = readFileSync(
+      join(repositoryRoot, 'packages', 'db', 'drizzle', '0007_bill_reconciliation.sql'),
       'utf8',
     );
 
@@ -183,6 +187,13 @@ describe('repository foundation', () => {
     expect(userStateRepository).toContain("mode: 'SET'");
     expect(userStateRepository).toContain('for update of ft');
     expect(userStateRepository).not.toContain('getById(');
+    expect(schema).toContain("'reconciliation_currency_tolerance'");
+    expect(schema).toContain('bill_payment_reconciliation_active_transaction_uq');
+    expect(billReconciliationMigration).toContain(
+      'cashcount_validate_active_bill_payment_reconciliation',
+    );
+    expect(billReconciliationMigration).toContain('bill_payment_reconciliation_evidence_trg');
+    expect(billReconciliationMigration).toContain("VALUES ('BRL', 0.010000)");
     expect(seed).toContain('owner@example.test');
     expect(seed).toContain('Synthetic Personal Finance');
   });
@@ -254,14 +265,14 @@ describe('repository foundation', () => {
     const adrIndex = readFileSync(join(repositoryRoot, 'docs', 'adr', 'README.md'), 'utf8');
 
     expect(readme).toContain(
-      '**Phase 0 is complete (PF-001 through PF-006), and Phase 1 is in progress through PF-018:**',
+      '**Phases 0 and 1 are complete (PF-001 through PF-006 and PF-010 through PF-019):**',
     );
-    expect(readme).toContain('**PF-019: bill child entities and');
+    expect(readme).toContain('**PF-020: money and date types**');
     expect(readme).toContain('configuration-validated shell; future Next.js web application');
     expect(agentInstructions).toContain('## Current implementation state');
     expect(agentInstructions).toContain('Phase 0 is complete: PF-001 through PF-006.');
-    expect(agentInstructions).toContain('PF-010 through PF-018 are complete');
-    expect(agentInstructions).toContain('The next ticket is PF-019');
+    expect(agentInstructions).toContain('Phase 1 is complete: PF-010 through PF-019');
+    expect(agentInstructions).toContain('The next ticket is PF-020');
     expect(agentInstructions).toContain('Update this section and the root README together');
     expect(adrIndex).toContain('These records complete the');
     expect(adrIndex).toContain('Phase 0 decision backlog');

@@ -162,13 +162,13 @@ describe('database migrations', () => {
             client,
             'select count(*)::integer as count from drizzle.__drizzle_migrations',
           ),
-        ).toBe(7);
+        ).toBe(8);
         expect(
           await queryCount(
             client,
             "select count(*)::integer as count from pg_tables where schemaname = 'public'",
           ),
-        ).toBe(27);
+        ).toBe(28);
         expect(
           await queryCount(
             client,
@@ -582,6 +582,15 @@ describe('database migrations', () => {
           providerTransactionId: 'shared-provider-transaction',
           workspaceId: workspaceB,
         });
+        await client.query(
+          `update financial_transaction
+           set system_financial_role = 'CARD_BILL_PAYMENT',
+               system_financial_role_source = 'HEURISTIC',
+               system_is_excluded_from_spend = true,
+               system_exclusion_source = 'HEURISTIC'
+           where id in ($1, $2)`,
+          [bankTransactionA, secondBankTransactionA],
+        );
 
         const exactAmounts = await client.query<{
           account_amount: string | null;
@@ -739,7 +748,7 @@ describe('database migrations', () => {
         );
         await expect(
           client.query(
-            `insert into bill_payment_reconciliation (workspace_id, credit_card_bill_payment_id, financial_transaction_id, match_status, match_method, matched_at) values ($1, $2, $3, 'USER_CONFIRMED', 'USER', now())`,
+            `insert into bill_payment_reconciliation (workspace_id, credit_card_bill_payment_id, financial_transaction_id, match_status, match_method, matched_at, confirmed_by) values ($1, $2, $3, 'USER_CONFIRMED', 'USER', now(), 'synthetic-owner')`,
             [workspaceA, billPaymentA, secondBankTransactionA],
           ),
         ).rejects.toMatchObject({ code: '23505' });
@@ -1293,6 +1302,232 @@ describe('database migrations', () => {
     });
   }, 30_000);
 
+  it('validates bill children and active payment reconciliation evidence', async () => {
+    await withTemporaryDatabase(async (connectionString) => {
+      await runMigrations(connectionString);
+      await seedSyntheticIdentity(connectionString, 'test');
+
+      const client = new Client({ connectionString });
+      const workspaceId = syntheticIdentitySeed.workspace.id;
+      const connectionId = '40000000-0000-4000-8000-000000000030';
+      const brlCheckingId = '50000000-0000-4000-8000-000000000030';
+      const brlCardId = '50000000-0000-4000-8000-000000000031';
+      const usdCheckingId = '50000000-0000-4000-8000-000000000032';
+      const usdCardId = '50000000-0000-4000-8000-000000000033';
+      const brlBillId = '60000000-0000-4000-8000-000000000030';
+      const usdBillId = '60000000-0000-4000-8000-000000000031';
+      const brlPaymentA = '61000000-0000-4000-8000-000000000030';
+      const brlPaymentB = '61000000-0000-4000-8000-000000000031';
+      const usdPayment = '61000000-0000-4000-8000-000000000032';
+      const withinToleranceId = 'a0000000-0000-4000-8000-000000000030';
+      const outsideToleranceId = 'a0000000-0000-4000-8000-000000000031';
+      const outsideDateId = 'a0000000-0000-4000-8000-000000000032';
+      const usdTransactionId = 'a0000000-0000-4000-8000-000000000033';
+
+      try {
+        await client.connect();
+        await client.query(
+          `insert into provider_connection (
+            id, workspace_id, provider, external_connection_id, external_connector_id, display_name
+          ) values ($1, $2, 'PLUGGY', 'reconciliation-item', 'reconciliation-connector',
+            'Reconciliation Connection')`,
+          [connectionId, workspaceId],
+        );
+        await client.query(
+          `insert into financial_account (
+            id, workspace_id, provider_connection_id, provider, external_account_id,
+            account_type, name, institution_name, currency
+          ) values
+            ($1, $2, $3, 'PLUGGY', 'reconciliation-brl-checking', 'CHECKING',
+              'BRL Checking', 'Synthetic Bank', 'BRL'),
+            ($4, $2, $3, 'PLUGGY', 'reconciliation-brl-card', 'CREDIT_CARD',
+              'BRL Card', 'Synthetic Bank', 'BRL'),
+            ($5, $2, $3, 'PLUGGY', 'reconciliation-usd-checking', 'CHECKING',
+              'USD Checking', 'Synthetic Bank', 'USD'),
+            ($6, $2, $3, 'PLUGGY', 'reconciliation-usd-card', 'CREDIT_CARD',
+              'USD Card', 'Synthetic Bank', 'USD')`,
+          [brlCheckingId, workspaceId, connectionId, brlCardId, usdCheckingId, usdCardId],
+        );
+        await client.query(
+          `insert into credit_card_bill (
+            id, workspace_id, financial_account_id, provider, external_bill_id,
+            status, total_amount, currency
+          ) values
+            ($1, $2, $3, 'PLUGGY', 'reconciliation-brl-bill', 'CLOSED', '0', 'BRL'),
+            ($4, $2, $5, 'PLUGGY', 'reconciliation-usd-bill', 'CLOSED', '0', 'USD')`,
+          [brlBillId, workspaceId, brlCardId, usdBillId, usdCardId],
+        );
+        await client.query(
+          `insert into credit_card_bill_payment (
+            id, workspace_id, credit_card_bill_id, provider, external_payment_id,
+            value_type, payment_date, amount, currency
+          ) values
+            ($1, $2, $3, 'PLUGGY', 'reconciliation-payment-a', 'PAID',
+              '2026-08-20', '100.000000', 'BRL'),
+            ($4, $2, $3, 'PLUGGY', 'reconciliation-payment-b', 'PAID',
+              '2026-08-20', '100.000000', 'BRL'),
+            ($5, $2, $6, 'PLUGGY', 'reconciliation-payment-usd', 'PAID',
+              '2026-08-20', '100.000000', 'USD')`,
+          [brlPaymentA, workspaceId, brlBillId, brlPaymentB, usdPayment, usdBillId],
+        );
+        await expect(
+          client.query(
+            `insert into credit_card_bill_payment (
+              workspace_id, credit_card_bill_id, provider, external_payment_id,
+              value_type, payment_date, amount, currency
+            ) values ($1, $2, 'PLUGGY', 'wrong-currency', 'PAID',
+              '2026-08-20', '100.000000', 'USD')`,
+            [workspaceId, brlBillId],
+          ),
+        ).rejects.toMatchObject({ code: '23514' });
+        await expect(
+          client.query(
+            `insert into credit_card_bill_finance_charge (
+              workspace_id, credit_card_bill_id, provider, external_charge_id,
+              charge_type, amount, currency
+            ) values ($1, $2, 'PLUGGY', 'wrong-currency-charge', 'INTEREST',
+              '1.000000', 'USD')`,
+            [workspaceId, brlBillId],
+          ),
+        ).rejects.toMatchObject({ code: '23514' });
+
+        for (const [id, accountId, providerTransactionId] of [
+          [withinToleranceId, brlCheckingId, 'within-tolerance'],
+          [outsideToleranceId, brlCheckingId, 'outside-tolerance'],
+          [outsideDateId, brlCheckingId, 'outside-date'],
+          [usdTransactionId, usdCheckingId, 'usd-payment'],
+        ] as const) {
+          await insertSyntheticTransaction(client, {
+            accountId,
+            id,
+            providerTransactionId,
+            workspaceId,
+          });
+        }
+        await client.query(
+          `update financial_transaction
+           set provider_amount_signed = case id
+                 when $1 then '-100.009000'::numeric
+                 when $2 then '-100.011000'::numeric
+                 else '-100.000000'::numeric
+               end,
+               provider_currency = case when id = $4 then 'USD' else 'BRL' end,
+               account_currency = case when id = $4 then 'USD' else 'BRL' end,
+               transaction_local_date = case when id = $3 then '2026-08-23'::date
+                 else '2026-08-20'::date end,
+               system_financial_role = 'CARD_BILL_PAYMENT',
+               system_financial_role_source = 'HEURISTIC',
+               system_is_excluded_from_spend = true,
+               system_exclusion_source = 'HEURISTIC'
+           where id in ($1, $2, $3, $4)`,
+          [withinToleranceId, outsideToleranceId, outsideDateId, usdTransactionId],
+        );
+
+        await client.query(
+          `insert into bill_payment_reconciliation (
+            workspace_id, credit_card_bill_payment_id, financial_transaction_id,
+            match_status, match_method, confidence, matched_at
+          ) values ($1, $2, $3, 'AUTO_MATCHED', 'AMOUNT_DATE', '0.9900', now())`,
+          [workspaceId, brlPaymentA, withinToleranceId],
+        );
+        await expect(
+          client.query(
+            `insert into bill_payment_reconciliation (
+              workspace_id, credit_card_bill_payment_id, financial_transaction_id,
+              match_status, match_method, confidence, matched_at
+            ) values ($1, $2, $3, 'AUTO_MATCHED', 'AMOUNT_DATE', '0.9900', now())`,
+            [workspaceId, brlPaymentB, withinToleranceId],
+          ),
+        ).rejects.toMatchObject({ code: '23505' });
+        await expect(
+          client.query(
+            `insert into bill_payment_reconciliation (
+              workspace_id, credit_card_bill_payment_id, financial_transaction_id,
+              match_status, match_method, confidence, matched_at
+            ) values ($1, $2, $3, 'AUTO_MATCHED', 'AMOUNT_DATE', '0.9900', now())`,
+            [workspaceId, brlPaymentB, outsideToleranceId],
+          ),
+        ).rejects.toMatchObject({ code: '23514' });
+        await expect(
+          client.query(
+            `insert into bill_payment_reconciliation (
+              workspace_id, credit_card_bill_payment_id, financial_transaction_id,
+              match_status, match_method, confidence, matched_at
+            ) values ($1, $2, $3, 'AUTO_MATCHED', 'AMOUNT_DATE', '0.9900', now())`,
+            [workspaceId, brlPaymentB, outsideDateId],
+          ),
+        ).rejects.toMatchObject({ code: '23514' });
+        await expect(
+          client.query(
+            `insert into bill_payment_reconciliation (
+              workspace_id, credit_card_bill_payment_id, financial_transaction_id,
+              match_status, match_method, confidence, matched_at
+            ) values ($1, $2, $3, 'AUTO_MATCHED', 'AMOUNT_DATE', '0.9900', now())`,
+            [workspaceId, usdPayment, usdTransactionId],
+          ),
+        ).rejects.toMatchObject({ code: '23514' });
+
+        await client.query(
+          `insert into reconciliation_currency_tolerance (currency, tolerance_amount)
+           values ('USD', '0.000000')`,
+        );
+        await client.query(
+          `insert into bill_payment_reconciliation (
+            workspace_id, credit_card_bill_payment_id, financial_transaction_id,
+            match_status, match_method, confidence, matched_at
+          ) values ($1, $2, $3, 'AUTO_MATCHED', 'AMOUNT_DATE', '0.9900', now())`,
+          [workspaceId, usdPayment, usdTransactionId],
+        );
+        await client.query(
+          `update financial_transaction set transaction_local_date = '2026-08-20' where id = $1`,
+          [outsideDateId],
+        );
+        await expect(
+          client.query(
+            `insert into bill_payment_reconciliation (
+              workspace_id, credit_card_bill_payment_id, financial_transaction_id,
+              match_status, match_method, matched_at
+            ) values ($1, $2, $3, 'USER_CONFIRMED', 'USER', now())`,
+            [workspaceId, brlPaymentB, outsideDateId],
+          ),
+        ).rejects.toMatchObject({ code: '23514' });
+        await client.query(
+          `insert into bill_payment_reconciliation (
+            workspace_id, credit_card_bill_payment_id, financial_transaction_id,
+            match_status, match_method, matched_at, confirmed_by
+          ) values ($1, $2, $3, 'USER_CONFIRMED', 'USER', now(), 'synthetic-owner')`,
+          [workspaceId, brlPaymentB, outsideDateId],
+        );
+
+        const brlSummary = await client.query<{
+          confirmed_bank_payment_total: string;
+          confirmed_bank_payment_count: string;
+          tolerance_amount: string;
+          unresolved_item_count: string;
+        }>(
+          `select confirmed_bank_payment_total, confirmed_bank_payment_count,
+             tolerance_amount, unresolved_item_count
+           from v_credit_card_bill_reconciliation where credit_card_bill_id = $1`,
+          [brlBillId],
+        );
+        expect(brlSummary.rows[0]).toEqual({
+          confirmed_bank_payment_total: '200.009000',
+          confirmed_bank_payment_count: '2',
+          tolerance_amount: '0.010000',
+          unresolved_item_count: '0',
+        });
+        expect(
+          await queryCount(
+            client,
+            "select count(*)::integer as count from reconciliation_currency_tolerance where currency in ('BRL', 'USD')",
+          ),
+        ).toBe(2);
+      } finally {
+        await client.end();
+      }
+    });
+  }, 30_000);
+
   it('updates transaction user state with explicit overrides and optimistic concurrency', async () => {
     await withTemporaryDatabase(async (connectionString) => {
       await runMigrations(connectionString);
@@ -1607,6 +1842,7 @@ describe('database migrations', () => {
     { entryCount: 4, expectedTables: 20, ticket: 'PF-014' },
     { entryCount: 5, expectedTables: 27, ticket: 'PF-015' },
     { entryCount: 6, expectedTables: 27, ticket: 'PF-016' },
+    { entryCount: 7, expectedTables: 27, ticket: 'PF-017' },
   ])(
     'upgrades a $ticket database without reapplying prior migrations',
     async ({ entryCount, expectedTables }) => {
@@ -1647,13 +1883,13 @@ describe('database migrations', () => {
                 afterUpgradeClient,
                 'select count(*)::integer as count from drizzle.__drizzle_migrations',
               ),
-            ).toBe(7);
+            ).toBe(8);
             expect(
               await queryCount(
                 afterUpgradeClient,
                 "select count(*)::integer as count from pg_tables where schemaname = 'public'",
               ),
-            ).toBe(27);
+            ).toBe(28);
             expect(
               await queryCount(
                 afterUpgradeClient,

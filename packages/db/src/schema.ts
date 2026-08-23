@@ -1227,6 +1227,9 @@ export const billPaymentReconciliation = pgTable(
     uniqueIndex('bill_payment_reconciliation_active_payment_uq')
       .on(table.workspaceId, table.creditCardBillPaymentId)
       .where(sql`${table.matchStatus} in ('AUTO_MATCHED', 'USER_CONFIRMED')`),
+    uniqueIndex('bill_payment_reconciliation_active_transaction_uq')
+      .on(table.workspaceId, table.financialTransactionId)
+      .where(sql`${table.matchStatus} in ('AUTO_MATCHED', 'USER_CONFIRMED')`),
     foreignKey({
       columns: [table.workspaceId, table.creditCardBillPaymentId],
       foreignColumns: [creditCardBillPayment.workspaceId, creditCardBillPayment.id],
@@ -1257,6 +1260,19 @@ export const billPaymentReconciliation = pgTable(
       'bill_payment_reconciliation_matched_at_ck',
       sql`${table.matchStatus} not in ('AUTO_MATCHED', 'USER_CONFIRMED') or ${table.matchedAt} is not null`,
     ),
+  ],
+);
+
+export const reconciliationCurrencyTolerance = pgTable(
+  'reconciliation_currency_tolerance',
+  {
+    currency: char('currency', { length: 3 }).primaryKey(),
+    toleranceAmount: numeric('tolerance_amount', { precision: 20, scale: 6 }).notNull(),
+    ...timestamps(),
+  },
+  (table) => [
+    check('reconciliation_currency_tolerance_currency_ck', sql`${table.currency} ~ '^[A-Z]{3}$'`),
+    check('reconciliation_currency_tolerance_amount_ck', sql`${table.toleranceAmount} >= 0`),
   ],
 );
 

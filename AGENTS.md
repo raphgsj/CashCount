@@ -7,7 +7,7 @@ record; the versioned implementation plan is the canonical specification.
 ## Current implementation state
 
 - Phase 0 is complete: PF-001 through PF-006.
-- PF-010 through PF-018 are complete: executable infrastructure includes health-checked local
+- Phase 1 is complete: PF-010 through PF-019. Executable infrastructure includes health-checked local
   PostgreSQL, Drizzle tooling, an explicit migration runner, migration-from-zero/upgrade CI
   verification, the identity/workspace schema with a synthetic local seed, and the provider/sync
   schema with encrypted evidence envelopes, webhook/queue dedupe, leases, and sync runs. The
@@ -20,8 +20,9 @@ record; the versioned implementation plan is the canonical specification.
   category actions are database-validated against global or same-workspace visibility. PF-003
   through PF-006 remain accepted architecture and integrity contracts for later implementation.
   Transaction user state has a workspace-required repository with explicit override modes,
-  optimistic concurrency, and canonical effective reads.
-- The next ticket is PF-019, which finalizes bill child entities and reconciliation behavior. Do not
+  optimistic concurrency, and canonical effective reads. Bill evidence uses configurable currency
+  tolerances, one active match per payment/bank transaction, and validated count-once reconciliation.
+- The next ticket is PF-020, which starts Phase 2 with Decimal money and timezone/date types. Do not
   imply that provider
   integration, queue worker behavior, authentication implementation, rule evaluation, financial
   policy or analytics services, repositories, or product UI already exist.

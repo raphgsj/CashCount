@@ -36,6 +36,7 @@ export {
   merchantAlias,
   providerConnection,
   providerRawObject,
+  reconciliationCurrencyTolerance,
   recurringSeries,
   syncRun,
   tag,
