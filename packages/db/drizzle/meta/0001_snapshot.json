@@ -1,0 +1,289 @@
+{
+  "id": "99ddad47-9674-4e11-9969-7d282ea402c4",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.app_user": {
+      "name": "app_user",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "email": {
+          "name": "email",
+          "type": "citext",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "display_name": {
+          "name": "display_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "auth_provider": {
+          "name": "auth_provider",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "auth_subject": {
+          "name": "auth_subject",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'ACTIVE'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "app_user_email_uq": {
+          "name": "app_user_email_uq",
+          "nullsNotDistinct": false,
+          "columns": ["email"]
+        },
+        "app_user_auth_identity_uq": {
+          "name": "app_user_auth_identity_uq",
+          "nullsNotDistinct": false,
+          "columns": ["auth_provider", "auth_subject"]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "app_user_email_nonempty_ck": {
+          "name": "app_user_email_nonempty_ck",
+          "value": "length(trim(\"app_user\".\"email\"::text)) > 0"
+        },
+        "app_user_email_normalized_ck": {
+          "name": "app_user_email_normalized_ck",
+          "value": "\"app_user\".\"email\"::text = lower(\"app_user\".\"email\"::text)"
+        },
+        "app_user_display_name_nonempty_ck": {
+          "name": "app_user_display_name_nonempty_ck",
+          "value": "\"app_user\".\"display_name\" is null or length(trim(\"app_user\".\"display_name\")) > 0"
+        },
+        "app_user_auth_provider_nonempty_ck": {
+          "name": "app_user_auth_provider_nonempty_ck",
+          "value": "length(trim(\"app_user\".\"auth_provider\")) > 0"
+        },
+        "app_user_auth_subject_nonempty_ck": {
+          "name": "app_user_auth_subject_nonempty_ck",
+          "value": "length(trim(\"app_user\".\"auth_subject\")) > 0"
+        },
+        "app_user_status_ck": {
+          "name": "app_user_status_ck",
+          "value": "\"app_user\".\"status\" in ('ACTIVE', 'DISABLED')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.workspace": {
+      "name": "workspace",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "base_currency": {
+          "name": "base_currency",
+          "type": "char(3)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'BRL'"
+        },
+        "timezone": {
+          "name": "timezone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'America/Sao_Paulo'"
+        },
+        "analytics_policy_version": {
+          "name": "analytics_policy_version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "workspace_name_nonempty_ck": {
+          "name": "workspace_name_nonempty_ck",
+          "value": "length(trim(\"workspace\".\"name\")) > 0"
+        },
+        "workspace_base_currency_ck": {
+          "name": "workspace_base_currency_ck",
+          "value": "\"workspace\".\"base_currency\" ~ '^[A-Z]{3}$'"
+        },
+        "workspace_timezone_nonempty_ck": {
+          "name": "workspace_timezone_nonempty_ck",
+          "value": "length(trim(\"workspace\".\"timezone\")) > 0"
+        },
+        "workspace_analytics_policy_version_ck": {
+          "name": "workspace_analytics_policy_version_ck",
+          "value": "\"workspace\".\"analytics_policy_version\" > 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.workspace_member": {
+      "name": "workspace_member",
+      "schema": "",
+      "columns": {
+        "workspace_id": {
+          "name": "workspace_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "role": {
+          "name": "role",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'OWNER'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "workspace_member_user_id_idx": {
+          "name": "workspace_member_user_id_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "workspace_member_workspace_id_workspace_id_fk": {
+          "name": "workspace_member_workspace_id_workspace_id_fk",
+          "tableFrom": "workspace_member",
+          "tableTo": "workspace",
+          "columnsFrom": ["workspace_id"],
+          "columnsTo": ["id"],
+          "onDelete": "restrict",
+          "onUpdate": "restrict"
+        },
+        "workspace_member_user_id_app_user_id_fk": {
+          "name": "workspace_member_user_id_app_user_id_fk",
+          "tableFrom": "workspace_member",
+          "tableTo": "app_user",
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
+          "onDelete": "restrict",
+          "onUpdate": "restrict"
+        }
+      },
+      "compositePrimaryKeys": {
+        "workspace_member_pk": {
+          "name": "workspace_member_pk",
+          "columns": ["workspace_id", "user_id"]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "workspace_member_role_ck": {
+          "name": "workspace_member_role_ck",
+          "value": "\"workspace_member\".\"role\" = 'OWNER'"
+        }
+      },
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

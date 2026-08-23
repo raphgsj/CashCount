@@ -36,6 +36,7 @@ export default tseslint.config(
     files: [
       'packages/config/src/**/*.ts',
       'packages/db/src/migrate-cli.ts',
+      'packages/db/src/seed-cli.ts',
       'packages/db/src/*.integration.test.ts',
       'apps/*/src/index.ts',
     ],

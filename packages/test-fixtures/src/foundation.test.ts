@@ -92,6 +92,7 @@ describe('repository foundation', () => {
       'db:check': expect.any(String),
       'db:generate': expect.any(String),
       'db:migrate': expect.any(String),
+      'db:seed': expect.any(String),
       'test:integration': expect.any(String),
     });
     expect(workflow).toContain('postgres:18.6-alpine3.24');
@@ -106,6 +107,25 @@ describe('repository foundation', () => {
 
       expect(commands).not.toContain('db:migrate');
     }
+  });
+
+  it('defines the PF-013 identity, workspace, provider, and sync schema boundary', () => {
+    const schema = readFileSync(join(repositoryRoot, 'packages', 'db', 'src', 'schema.ts'), 'utf8');
+    const seed = readFileSync(join(repositoryRoot, 'packages', 'db', 'src', 'seed.ts'), 'utf8');
+
+    expect(schema).toContain("'app_user'");
+    expect(schema).toContain("'workspace'");
+    expect(schema).toContain("'workspace_member'");
+    expect(schema).toContain("'provider_connection'");
+    expect(schema).toContain("'provider_raw_object'");
+    expect(schema).toContain("'webhook_event'");
+    expect(schema).toContain("'job_queue'");
+    expect(schema).toContain("'sync_run'");
+    expect(schema).toContain('sync_run_workspace_provider_connection_fk');
+    expect(schema).toContain('job_queue_active_dedupe_uq');
+    expect(schema).not.toContain("'financial_account'");
+    expect(seed).toContain('owner@example.test');
+    expect(seed).toContain('Synthetic Personal Finance');
   });
 
   it.each(architectureDecisionRecords)('%s records a complete accepted decision', (fileName) => {
@@ -175,14 +195,14 @@ describe('repository foundation', () => {
     const adrIndex = readFileSync(join(repositoryRoot, 'docs', 'adr', 'README.md'), 'utf8');
 
     expect(readme).toContain(
-      '**Phase 0 is complete (PF-001 through PF-006), and Phase 1 is in progress through PF-011:**',
+      '**Phase 0 is complete (PF-001 through PF-006), and Phase 1 is in progress through PF-013:**',
     );
-    expect(readme).toContain('**PF-012: identity/workspace schema**');
+    expect(readme).toContain('**PF-014: financial core schema**');
     expect(readme).toContain('configuration-validated shell; future Next.js web application');
     expect(agentInstructions).toContain('## Current implementation state');
     expect(agentInstructions).toContain('Phase 0 is complete: PF-001 through PF-006.');
-    expect(agentInstructions).toContain('PF-010 and PF-011 are complete');
-    expect(agentInstructions).toContain('The next ticket is PF-012');
+    expect(agentInstructions).toContain('PF-010 through PF-013 are complete');
+    expect(agentInstructions).toContain('The next ticket is PF-014');
     expect(agentInstructions).toContain('Update this section and the root README together');
     expect(adrIndex).toContain('These records complete the');
     expect(adrIndex).toContain('Phase 0 decision backlog');

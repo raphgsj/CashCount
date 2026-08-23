@@ -7,12 +7,14 @@ record; the versioned implementation plan is the canonical specification.
 ## Current implementation state
 
 - Phase 0 is complete: PF-001 through PF-006.
-- PF-010 and PF-011 are complete: executable infrastructure includes health-checked local PostgreSQL,
-  Drizzle tooling, an explicit migration runner, and migration-from-zero CI verification. PF-003
+- PF-010 through PF-013 are complete: executable infrastructure includes health-checked local
+  PostgreSQL, Drizzle tooling, an explicit migration runner, migration-from-zero/upgrade CI
+  verification, the identity/workspace schema with a synthetic local seed, and the provider/sync
+  schema with encrypted evidence envelopes, webhook/queue dedupe, leases, and sync runs. PF-003
   through PF-006 remain accepted architecture and integrity contracts for later implementation.
-- The next ticket is PF-012, which introduces the identity/workspace schema. Do not imply that
-  application database tables, provider integration, authentication implementation, financial
-  logic, or product UI already exist.
+- The next ticket is PF-014, which introduces the financial core schema. Do not imply that provider
+  integration, queue worker behavior, authentication implementation, financial logic, or product UI
+  already exist.
 - ADRs 0008, 0009, and 0010 define mandatory credential, workspace, provider-identity, signed-amount,
   and bill-reconciliation behavior for subsequent tickets.
 - Update this section and the root README together whenever a PF ticket or phase is completed.
