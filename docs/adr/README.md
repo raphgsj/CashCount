@@ -19,5 +19,7 @@ do not silently erase the original reasoning.
 | [0010](0010-provider-identity-and-bill-semantics.md) | Accepted | Provider identity, continuity, and bill economics remain distinct concepts |
 
 PF-003 established all ten baseline decisions. PF-004 expanded ADR 0008 with the concrete credential
-storage, authorization, rotation, and MCP data-path model. PF-005 and PF-006 will deepen ADRs 0009 and
-0010 without changing their accepted direction unless a later record says so.
+storage, authorization, rotation, and MCP data-path model. PF-005 expanded ADR 0009 with provider
+uniqueness, composite relationship, category visibility, repository-scope, and verification
+contracts. PF-006 will deepen ADR 0010 without changing its accepted direction unless a later record
+says so.

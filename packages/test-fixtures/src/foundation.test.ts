@@ -97,4 +97,21 @@ describe('repository foundation', () => {
       'Database credentials stay only in services with repository responsibilities',
     );
   });
+
+  it('records the complete workspace-integrity decision', () => {
+    const record = readFileSync(
+      join(repositoryRoot, 'docs', 'adr', '0009-workspace-integrity.md'),
+      'utf8',
+    );
+
+    expect(record).toContain('- **Tickets:** PF-003; expanded by PF-005');
+    expect(record).toContain('## Provider identity and uniqueness');
+    expect(record).toContain('## Composite foreign-key coverage');
+    expect(record).toContain('## Category uniqueness and visibility');
+    expect(record).toContain('## Repository scoping contract');
+    expect(record).toContain('## Verification matrix');
+    expect(record).toContain('Every workspace-owned table with a surrogate `id` adds');
+    expect(record).toContain('getTransactionById(workspaceId, transactionId)');
+    expect(record).toContain('cross-workspace category assignment fails');
+  });
 });
