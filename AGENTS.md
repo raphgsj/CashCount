@@ -7,7 +7,7 @@ record; the versioned implementation plan is the canonical specification.
 ## Current implementation state
 
 - Phase 0 is complete: PF-001 through PF-006.
-- PF-010 through PF-017 are complete: executable infrastructure includes health-checked local
+- PF-010 through PF-018 are complete: executable infrastructure includes health-checked local
   PostgreSQL, Drizzle tooling, an explicit migration runner, migration-from-zero/upgrade CI
   verification, the identity/workspace schema with a synthetic local seed, and the provider/sync
   schema with encrypted evidence envelopes, webhook/queue dedupe, leases, and sync runs. The
@@ -19,8 +19,10 @@ record; the versioned implementation plan is the canonical specification.
   commitments. Composite workspace relationships are catalog-audited, and classification-rule
   category actions are database-validated against global or same-workspace visibility. PF-003
   through PF-006 remain accepted architecture and integrity contracts for later implementation.
-- The next ticket is PF-018, which implements the transaction user-state repository contract and
-  effective-view behavior. Do not imply that provider
+  Transaction user state has a workspace-required repository with explicit override modes,
+  optimistic concurrency, and canonical effective reads.
+- The next ticket is PF-019, which finalizes bill child entities and reconciliation behavior. Do not
+  imply that provider
   integration, queue worker behavior, authentication implementation, rule evaluation, financial
   policy or analytics services, repositories, or product UI already exist.
 - ADRs 0008, 0009, and 0010 define mandatory credential, workspace, provider-identity, signed-amount,

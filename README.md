@@ -5,7 +5,7 @@ owner's financial data through a provider adapter, preserves normalized history 
 and exposes deterministic analytics to an authenticated web application and a read-only MCP
 server.
 
-**Phase 0 is complete (PF-001 through PF-006), and Phase 1 is in progress through PF-017:**
+**Phase 0 is complete (PF-001 through PF-006), and Phase 1 is in progress through PF-018:**
 
 - **PF-001** established the monorepo and application/package foundations.
 - **PF-002** added validated application environments and production safety constraints.
@@ -27,13 +27,17 @@ server.
   supporting indexes.
 - **PF-017** completed the PostgreSQL tenant-integrity boundary with catalog-verified composite
   workspace keys/foreign keys and workspace-visible classification-rule category actions.
+- **PF-018** added a workspace-required transaction user-state repository with explicit override
+  modes, atomic first-write locking, optimistic concurrency, notes/review state, and canonical
+  effective-view reads.
 
 PF-003 through PF-006 are architecture-documentation milestones; executable implementation now
-extends through PF-017's identity, workspace, provider/synchronization, financial-core,
+extends through PF-018's identity, workspace, provider/synchronization, financial-core,
 intelligence, and initial query-view database foundation. The repository intentionally contains no
-rule evaluator, domain financial-policy implementation, analytics service, repositories, provider
-API integration, queue worker implementation, authentication implementation, product UI, or
-production secrets. The next ticket is **PF-018: transaction user state and effective view**.
+rule evaluator, domain financial-policy implementation, analytics service, general financial-data
+repositories, provider API integration, queue worker implementation, authentication implementation,
+product UI, or production secrets. The next ticket is **PF-019: bill child entities and
+reconciliation schema**.
 
 The accepted decisions are indexed in [`docs/adr/`](docs/adr/README.md). In particular, ADRs 0008
 through 0010 are the implementation contracts for credential boundaries, workspace integrity, and

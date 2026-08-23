@@ -15,6 +15,10 @@ deposit-account cash flow, and expose unresolved evidence instead of fabricating
 PF-017 validates classification-rule category codes in PostgreSQL and audits all 34 relationships
 between workspace-owned tables for leading `workspace_id` columns and matching parent candidate
 keys.
+PF-018 adds the first deliberately narrow repository: every transaction user-state read/write
+requires `workspaceId`; updates serialize on the owning transaction, distinguish missing rows from
+stale versions, implement explicit `SET`/`CLEAR`/`INHERIT`, and read effective values only from the
+canonical view. Provider synchronization has no user-state mutation method.
 
 From the repository root:
 

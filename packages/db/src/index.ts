@@ -4,6 +4,21 @@ export { createDatabaseClient, type DatabaseClient } from './client.js';
 export { defaultMigrationsFolder, runMigrations } from './migrations.js';
 export { seedSyntheticIdentity, syntheticIdentitySeed } from './seed.js';
 export {
+  financialRoles,
+  TransactionNotFoundError,
+  TransactionUserStateConflictError,
+  TransactionUserStateRepository,
+  transactionReviewStatuses,
+  type EffectiveTransactionUserState,
+  type FinancialRole,
+  type NullableOverridePatch,
+  type OverridePatch,
+  type TransactionReviewStatus,
+  type TransactionUserStateRecord,
+  type UpdateTransactionUserStateInput,
+  type UserStateActorType,
+} from './transaction-user-state-repository.js';
+export {
   appUser,
   auditEvent,
   billPaymentReconciliation,

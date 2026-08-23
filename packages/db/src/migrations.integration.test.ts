@@ -4,11 +4,16 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { parseDatabaseConfig } from '@cashcount/config';
-import { Client } from 'pg';
+import { Client, Pool } from 'pg';
 import { describe, expect, it } from 'vitest';
 
 import { defaultMigrationsFolder, runMigrations } from './migrations.js';
 import { seedSyntheticIdentity, syntheticIdentitySeed } from './seed.js';
+import {
+  TransactionNotFoundError,
+  TransactionUserStateConflictError,
+  TransactionUserStateRepository,
+} from './transaction-user-state-repository.js';
 
 interface CountResult {
   count: number;
@@ -1283,6 +1288,213 @@ describe('database migrations', () => {
           ),
         ).toBe(1);
       } finally {
+        await client.end();
+      }
+    });
+  }, 30_000);
+
+  it('updates transaction user state with explicit overrides and optimistic concurrency', async () => {
+    await withTemporaryDatabase(async (connectionString) => {
+      await runMigrations(connectionString);
+      await seedSyntheticIdentity(connectionString, 'test');
+
+      const client = new Client({ connectionString });
+      const pool = new Pool({ connectionString });
+      const repository = new TransactionUserStateRepository(pool);
+      const workspaceId = syntheticIdentitySeed.workspace.id;
+      const wrongWorkspaceId = '20000000-0000-4000-8000-000000000099';
+      const connectionId = '40000000-0000-4000-8000-000000000020';
+      const accountId = '50000000-0000-4000-8000-000000000020';
+      const categoryId = '80000000-0000-4000-8000-000000000020';
+      const merchantId = '90000000-0000-4000-8000-000000000020';
+      const transactionId = 'a0000000-0000-4000-8000-000000000020';
+
+      try {
+        await client.connect();
+        await client.query(
+          `insert into provider_connection (
+            id, workspace_id, provider, external_connection_id, external_connector_id, display_name
+          ) values ($1, $2, 'PLUGGY', 'user-state-item', 'user-state-connector',
+            'User State Connection')`,
+          [connectionId, workspaceId],
+        );
+        await client.query(
+          `insert into financial_account (
+            id, workspace_id, provider_connection_id, provider, external_account_id,
+            account_type, name, institution_name, currency
+          ) values ($1, $2, $3, 'PLUGGY', 'user-state-account', 'CHECKING',
+            'User State Account', 'Synthetic Bank', 'BRL')`,
+          [accountId, workspaceId, connectionId],
+        );
+        await client.query(
+          `insert into category (id, workspace_id, code, kind, name_en, name_pt_br)
+           values ($1, $2, 'custom.80000000-0000-4000-8000-000000000020',
+             'EXPENSE', 'System Category', 'Categoria do Sistema')`,
+          [categoryId, workspaceId],
+        );
+        await client.query(
+          `insert into merchant (id, workspace_id, canonical_name, normalized_key)
+           values ($1, $2, 'System Merchant', 'system-merchant')`,
+          [merchantId, workspaceId],
+        );
+        await insertSyntheticTransaction(client, {
+          accountId,
+          categoryId,
+          id: transactionId,
+          merchantId,
+          providerTransactionId: 'user-state-transaction',
+          workspaceId,
+        });
+        await client.query(
+          `update financial_transaction
+           set system_category_source = 'RULE',
+               system_merchant_source = 'MERCHANT',
+               system_financial_role_source = 'HEURISTIC',
+               system_exclusion_source = 'HEURISTIC'
+           where id = $1`,
+          [transactionId],
+        );
+
+        expect(await repository.get(workspaceId, transactionId)).toBeNull();
+        expect(await repository.getEffective(workspaceId, transactionId)).toMatchObject({
+          categoryOverrideEnabled: false,
+          effectiveCategoryId: categoryId,
+          effectiveCategorySource: 'RULE',
+          effectiveFinancialRole: 'PURCHASE',
+          effectiveMerchantId: merchantId,
+          userStateVersion: 0,
+        });
+
+        const concurrentWrites = await Promise.allSettled([
+          repository.update({
+            actorType: 'USER',
+            expectedVersion: 0,
+            notes: 'First concurrent edit',
+            transactionId,
+            workspaceId,
+          }),
+          repository.update({
+            actorType: 'USER',
+            expectedVersion: 0,
+            notes: 'Second concurrent edit',
+            transactionId,
+            workspaceId,
+          }),
+        ]);
+        expect(concurrentWrites.filter(({ status }) => status === 'fulfilled')).toHaveLength(1);
+        const rejectedWrite = concurrentWrites.find(({ status }) => status === 'rejected');
+        expect(rejectedWrite).toMatchObject({
+          reason: expect.any(TransactionUserStateConflictError),
+          status: 'rejected',
+        });
+
+        const overridden = await repository.update({
+          actorId: 'synthetic-owner',
+          actorType: 'USER',
+          categoryOverride: { mode: 'CLEAR' },
+          excludedFromSpendOverride: { mode: 'SET', value: false },
+          expectedVersion: 1,
+          financialRoleOverride: { mode: 'SET', value: 'REFUND' },
+          merchantOverride: { mode: 'SET', value: merchantId },
+          notes: 'Personal note',
+          reviewStatus: 'CONFIRMED',
+          transactionId,
+          workspaceId,
+        });
+        expect(overridden).toMatchObject({
+          categoryIdOverride: null,
+          categoryOverrideEnabled: true,
+          excludedFromSpendOverride: false,
+          financialRoleOverride: 'REFUND',
+          financialRoleOverrideEnabled: true,
+          merchantIdOverride: merchantId,
+          merchantOverrideEnabled: true,
+          notes: 'Personal note',
+          reviewStatus: 'CONFIRMED',
+          version: 2,
+        });
+        expect(await repository.getEffective(workspaceId, transactionId)).toMatchObject({
+          effectiveCategoryId: null,
+          effectiveCategorySource: 'USER',
+          effectiveExclusionSource: 'USER',
+          effectiveFinancialRole: 'REFUND',
+          effectiveFinancialRoleSource: 'USER',
+          effectiveIsExcludedFromSpend: false,
+          effectiveMerchantId: merchantId,
+          effectiveMerchantSource: 'USER',
+          notes: 'Personal note',
+          reviewStatus: 'CONFIRMED',
+          userStateVersion: 2,
+        });
+
+        const inherited = await repository.update({
+          actorType: 'USER',
+          categoryOverride: { mode: 'INHERIT' },
+          excludedFromSpendOverride: { mode: 'INHERIT' },
+          expectedVersion: 2,
+          financialRoleOverride: { mode: 'INHERIT' },
+          merchantOverride: { mode: 'INHERIT' },
+          notes: null,
+          reviewStatus: 'UNREVIEWED',
+          transactionId,
+          workspaceId,
+        });
+        expect(inherited).toMatchObject({
+          categoryOverrideEnabled: false,
+          excludedFromSpendOverride: null,
+          financialRoleOverrideEnabled: false,
+          merchantOverrideEnabled: false,
+          notes: null,
+          version: 3,
+        });
+        expect(await repository.getEffective(workspaceId, transactionId)).toMatchObject({
+          effectiveCategoryId: categoryId,
+          effectiveCategorySource: 'RULE',
+          effectiveExclusionSource: 'HEURISTIC',
+          effectiveFinancialRole: 'PURCHASE',
+          effectiveFinancialRoleSource: 'HEURISTIC',
+          effectiveMerchantId: merchantId,
+          effectiveMerchantSource: 'MERCHANT',
+          userStateVersion: 3,
+        });
+
+        await expect(
+          repository.update({
+            actorType: 'USER',
+            expectedVersion: 2,
+            notes: 'Stale edit',
+            transactionId,
+            workspaceId,
+          }),
+        ).rejects.toMatchObject({
+          actualVersion: 3,
+          expectedVersion: 2,
+          name: 'TransactionUserStateConflictError',
+        });
+        expect(await repository.getEffective(wrongWorkspaceId, transactionId)).toBeNull();
+        await expect(
+          repository.update({
+            actorType: 'USER',
+            expectedVersion: 3,
+            transactionId,
+            workspaceId: wrongWorkspaceId,
+          }),
+        ).rejects.toBeInstanceOf(TransactionNotFoundError);
+
+        await client.query(
+          `update financial_transaction
+           set system_financial_role = 'FEE', system_financial_role_source = 'RULE'
+           where workspace_id = $1 and id = $2`,
+          [workspaceId, transactionId],
+        );
+        expect(await repository.get(workspaceId, transactionId)).toMatchObject({ version: 3 });
+        expect(await repository.getEffective(workspaceId, transactionId)).toMatchObject({
+          effectiveFinancialRole: 'FEE',
+          effectiveFinancialRoleSource: 'RULE',
+          userStateVersion: 3,
+        });
+      } finally {
+        await pool.end();
         await client.end();
       }
     });

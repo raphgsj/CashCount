@@ -109,7 +109,7 @@ describe('repository foundation', () => {
     }
   });
 
-  it('defines the PF-017 database integrity boundary', () => {
+  it('defines the PF-018 transaction user-state boundary', () => {
     const schema = readFileSync(join(repositoryRoot, 'packages', 'db', 'src', 'schema.ts'), 'utf8');
     const seed = readFileSync(join(repositoryRoot, 'packages', 'db', 'src', 'seed.ts'), 'utf8');
     const viewsMigration = readFileSync(
@@ -118,6 +118,10 @@ describe('repository foundation', () => {
     );
     const integrityMigration = readFileSync(
       join(repositoryRoot, 'packages', 'db', 'drizzle', '0006_workspace_integrity.sql'),
+      'utf8',
+    );
+    const userStateRepository = readFileSync(
+      join(repositoryRoot, 'packages', 'db', 'src', 'transaction-user-state-repository.ts'),
       'utf8',
     );
 
@@ -172,6 +176,13 @@ describe('repository foundation', () => {
     expect(viewsMigration).not.toContain('MATERIALIZED VIEW');
     expect(integrityMigration).toContain('cashcount_validate_classification_rule_category_action');
     expect(integrityMigration).toContain('classification_rule_category_action_visibility_trg');
+    expect(userStateRepository).toContain('class TransactionUserStateRepository');
+    expect(userStateRepository).toContain('workspaceId: string');
+    expect(userStateRepository).toContain("mode: 'CLEAR'");
+    expect(userStateRepository).toContain("mode: 'INHERIT'");
+    expect(userStateRepository).toContain("mode: 'SET'");
+    expect(userStateRepository).toContain('for update of ft');
+    expect(userStateRepository).not.toContain('getById(');
     expect(seed).toContain('owner@example.test');
     expect(seed).toContain('Synthetic Personal Finance');
   });
@@ -243,14 +254,14 @@ describe('repository foundation', () => {
     const adrIndex = readFileSync(join(repositoryRoot, 'docs', 'adr', 'README.md'), 'utf8');
 
     expect(readme).toContain(
-      '**Phase 0 is complete (PF-001 through PF-006), and Phase 1 is in progress through PF-017:**',
+      '**Phase 0 is complete (PF-001 through PF-006), and Phase 1 is in progress through PF-018:**',
     );
-    expect(readme).toContain('**PF-018: transaction user state and effective view**');
+    expect(readme).toContain('**PF-019: bill child entities and');
     expect(readme).toContain('configuration-validated shell; future Next.js web application');
     expect(agentInstructions).toContain('## Current implementation state');
     expect(agentInstructions).toContain('Phase 0 is complete: PF-001 through PF-006.');
-    expect(agentInstructions).toContain('PF-010 through PF-017 are complete');
-    expect(agentInstructions).toContain('The next ticket is PF-018');
+    expect(agentInstructions).toContain('PF-010 through PF-018 are complete');
+    expect(agentInstructions).toContain('The next ticket is PF-019');
     expect(agentInstructions).toContain('Update this section and the root README together');
     expect(adrIndex).toContain('These records complete the');
     expect(adrIndex).toContain('Phase 0 decision backlog');
