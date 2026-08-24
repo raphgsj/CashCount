@@ -7,6 +7,12 @@ export {
   type AccountImportTarget,
 } from './account-import-repository.js';
 export {
+  AccountHistoryCoverageRepository,
+  type AccountHistoryCoverage,
+  type AccountHistoryCoverageStatus,
+  type IncompleteHistoryWarning,
+} from './account-history-coverage-repository.js';
+export {
   BillImportInvariantError,
   BillImportRepository,
   type BillImportAccount,

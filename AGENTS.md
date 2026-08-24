@@ -56,8 +56,11 @@ record; the versioned implementation plan is the canonical specification.
 - PF-035 adds an explicit-workspace/connection full-import command and repeated sanitized
   account→transaction→bill regression coverage proving normalized/raw/bill-child idempotence and
   user-state preservation.
-- The next ticket is PF-036, which persists account history coverage and incomplete-history
-  warnings. Do not imply that a replacement detector, queue worker behavior, product authentication,
+- PF-036 adds conservative per-account provider-history assessment, owner-extended coverage
+  preservation, and workspace-scoped range warnings whenever a request predates actual known
+  coverage. Concurrent first user-state writes now resolve losers as typed optimistic conflicts.
+- The next ticket is PF-037, which adds provider transaction replacement detection and safe
+  confirmed continuity transfer. Do not imply that queue worker behavior, product authentication,
   rule evaluation, analytics services, general repositories, or product UI exist.
 - ADRs 0008, 0009, and 0010 define mandatory credential, workspace, provider-identity, signed-amount,
   and bill-reconciliation behavior for subsequent tickets.

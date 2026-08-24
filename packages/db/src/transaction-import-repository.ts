@@ -656,17 +656,28 @@ export class TransactionImportRepository {
     financialAccountId: string,
     completedAt = new Date(),
   ): Promise<void> {
+    const reachedProviderMaximum = sql`${financialAccount.providerHistoryEarliestDate} is not null
+      and ${financialAccount.providerHistoryLatestDate} is not null
+      and ${financialAccount.providerHistoryEarliestDate}
+        <= (${financialAccount.providerHistoryLatestDate} - interval '12 months')::date`;
     const rows = await this.database
       .update(financialAccount)
       .set({
         historyCoverageNote: sql`case
-          when ${financialAccount.historyCoverageStatus} in ('UNKNOWN', 'PARTIAL')
-            then 'Observed provider transaction range; completeness not yet assessed.'
-          else ${financialAccount.historyCoverageNote}
+          when ${financialAccount.historyCoverageStatus} = 'USER_EXTENDED_HISTORY'
+            then ${financialAccount.historyCoverageNote}
+          when ${reachedProviderMaximum}
+            then 'Observed provider history spans at least the documented maximum window.'
+          when ${financialAccount.providerHistoryEarliestDate} is null
+            then 'Provider returned no dated transactions; historical completeness is unknown.'
+          else 'Provider history begins ' || ${financialAccount.providerHistoryEarliestDate}::text
+            || '; earlier activity may be unavailable.'
         end`,
         historyCoverageStatus: sql`case
-          when ${financialAccount.historyCoverageStatus} = 'UNKNOWN' then 'PARTIAL'
-          else ${financialAccount.historyCoverageStatus}
+          when ${financialAccount.historyCoverageStatus} = 'USER_EXTENDED_HISTORY'
+            then 'USER_EXTENDED_HISTORY'
+          when ${reachedProviderMaximum} then 'PROVIDER_MAXIMUM_RETRIEVED'
+          else 'PARTIAL'
         end`,
         initialImportCompletedAt: sql`coalesce(${financialAccount.initialImportCompletedAt}, ${completedAt})`,
         lastSuccessfulSyncAt: completedAt,

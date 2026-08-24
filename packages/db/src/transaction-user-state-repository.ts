@@ -436,6 +436,7 @@ export class TransactionUserStateRepository {
            ) values (
              $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13
            )
+           on conflict (financial_transaction_id) do nothing
            returning *`,
           parameters,
         );
@@ -465,7 +466,15 @@ export class TransactionUserStateRepository {
 
       const updated = result.rows[0];
       if (updated === undefined) {
-        throw new TransactionUserStateConflictError(input.expectedVersion, actualVersion);
+        const conflict = await client.query<{ version: number }>(
+          `select version from transaction_user_state
+           where workspace_id = $1 and financial_transaction_id = $2`,
+          [input.workspaceId, input.transactionId],
+        );
+        throw new TransactionUserStateConflictError(
+          input.expectedVersion,
+          conflict.rows[0]?.version ?? actualVersion,
+        );
       }
 
       await client.query('commit');

@@ -37,6 +37,11 @@ credit-card bill, payment, and finance-charge imports with nullable provider fie
 hash-deduplicated evidence, idempotent child identities, and existing-transaction back-linking only.
 PF-035 exercises those repositories together against the sanitized provider fixture matrix twice,
 verifying stable normalized/raw/child counts and preservation of transaction user state.
+PF-036 conservatively derives `PARTIAL` versus `PROVIDER_MAXIMUM_RETRIEVED` from the actually
+observed provider date span, preserves `USER_EXTENDED_HISTORY`, and exposes a workspace-required
+range query with structured `INCOMPLETE_HISTORY` warnings before the earliest known date. The same
+gate hardens concurrent first user-state writes so unique races surface as typed optimistic
+conflicts rather than raw database errors.
 
 From the repository root:
 

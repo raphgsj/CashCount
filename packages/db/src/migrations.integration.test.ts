@@ -21,6 +21,7 @@ import {
   AccountImportInvariantError,
   AccountImportRepository,
 } from './account-import-repository.js';
+import { AccountHistoryCoverageRepository } from './account-history-coverage-repository.js';
 import { BillImportInvariantError, BillImportRepository } from './bill-import-repository.js';
 import { PayloadEncryptionService, payloadCanonicalizationVersion } from './encryption.js';
 import { defaultMigrationsFolder, runMigrations } from './migrations.js';
@@ -764,21 +765,46 @@ describe('database migrations', () => {
           await queryCount(client, `select count(*)::integer as count from transaction_user_state`),
         ).toBe(0);
         const coverage = await client.query<{
+          history_coverage_note: string;
           history_coverage_status: string;
           provider_history_earliest_date: string;
           provider_history_latest_date: string;
         }>(
-          `select history_coverage_status,
+          `select history_coverage_status, history_coverage_note,
                   provider_history_earliest_date::text as provider_history_earliest_date,
                   provider_history_latest_date::text as provider_history_latest_date
            from financial_account where id = $1`,
           [checkingAccountId],
         );
         expect(coverage.rows[0]).toEqual({
+          history_coverage_note:
+            'Provider history begins 2026-08-23; earlier activity may be unavailable.',
           history_coverage_status: 'PARTIAL',
           provider_history_earliest_date: '2026-08-23',
           provider_history_latest_date: '2026-08-23',
         });
+        const coverageRepository = new AccountHistoryCoverageRepository(
+          drizzle({ client, schema }),
+        );
+        await expect(
+          coverageRepository.getForRange(workspaceId, '2026-01-01', [checkingAccountId]),
+        ).resolves.toMatchObject([
+          {
+            accountId: checkingAccountId,
+            coverageStatus: 'PARTIAL',
+            warning: {
+              availableFrom: '2026-08-23',
+              code: 'INCOMPLETE_HISTORY',
+              requestedFrom: '2026-01-01',
+            },
+          },
+        ]);
+        await expect(
+          coverageRepository.getForRange(workspaceId, '2026-08-23', [checkingAccountId]),
+        ).resolves.toMatchObject([{ warning: null }]);
+        await expect(
+          coverageRepository.getForRange(randomUUID(), '2026-01-01', [checkingAccountId]),
+        ).resolves.toEqual([]);
 
         const repeated = await runImport(
           [checkingTransaction()],
@@ -900,6 +926,65 @@ describe('database migrations', () => {
         expect(
           await queryCount(client, `select count(*)::integer as count from transaction_user_state`),
         ).toBe(1);
+
+        const deepHistory = checkingTransaction({
+          externalTransactionId: 'synthetic-checking-history-boundary',
+          raw: { confidentialMarker: 'history-secret' },
+          transactionAt: '2025-08-22T12:00:00.000Z',
+        });
+        const deepHistoryRun = await runImport(
+          [deepHistory],
+          cardTransaction(),
+          new Date('2026-08-23T18:00:00.000Z'),
+        );
+        expect(deepHistoryRun.completed).toMatchObject({ transactionsInserted: 1 });
+        const maximumCoverage = await client.query<{
+          history_coverage_note: string;
+          history_coverage_status: string;
+          provider_history_earliest_date: string;
+          provider_history_latest_date: string;
+        }>(
+          `select history_coverage_status, history_coverage_note,
+                  provider_history_earliest_date::text as provider_history_earliest_date,
+                  provider_history_latest_date::text as provider_history_latest_date
+           from financial_account where id = $1`,
+          [checkingAccountId],
+        );
+        expect(maximumCoverage.rows[0]).toEqual({
+          history_coverage_note:
+            'Observed provider history spans at least the documented maximum window.',
+          history_coverage_status: 'PROVIDER_MAXIMUM_RETRIEVED',
+          provider_history_earliest_date: '2025-08-22',
+          provider_history_latest_date: '2026-08-23',
+        });
+        await expect(
+          coverageRepository.getForRange(workspaceId, '2025-08-22', [checkingAccountId]),
+        ).resolves.toMatchObject([{ coverageStatus: 'PROVIDER_MAXIMUM_RETRIEVED', warning: null }]);
+        await expect(
+          coverageRepository.getForRange(workspaceId, '2025-08-21', [checkingAccountId]),
+        ).resolves.toMatchObject([
+          {
+            coverageStatus: 'PROVIDER_MAXIMUM_RETRIEVED',
+            warning: { code: 'INCOMPLETE_HISTORY', requestedFrom: '2025-08-21' },
+          },
+        ]);
+        await client.query(
+          `update financial_account
+           set history_coverage_status = 'USER_EXTENDED_HISTORY',
+               history_coverage_note = 'Synthetic owner import extends provider history.'
+           where workspace_id = $1 and id = $2`,
+          [workspaceId, checkingAccountId],
+        );
+        await runImport([deepHistory], cardTransaction(), new Date('2026-08-23T19:00:00.000Z'));
+        await expect(
+          coverageRepository.getForRange(workspaceId, '2025-08-22', [checkingAccountId]),
+        ).resolves.toMatchObject([
+          {
+            coverageNote: 'Synthetic owner import extends provider history.',
+            coverageStatus: 'USER_EXTENDED_HISTORY',
+            warning: null,
+          },
+        ]);
       } finally {
         await client.end();
       }
