@@ -36,6 +36,7 @@ export interface UnclassifiedQueueCursor {
 }
 
 export interface UnclassifiedQueueItem {
+  accountCurrency: string;
   accountCurrencyAmountSigned: string | null;
   categorySource: string;
   descriptionNormalized: string;
@@ -72,6 +73,7 @@ interface QualityRow {
 }
 
 interface QueueRow {
+  account_currency: string;
   account_currency_amount_signed: string | null;
   category_source: string;
   description_normalized: string;
@@ -107,6 +109,7 @@ function requireUuid(name: string, value: string): void {
 
 function queueItem(row: QueueRow): UnclassifiedQueueItem {
   return {
+    accountCurrency: row.account_currency,
     accountCurrencyAmountSigned: row.account_currency_amount_signed,
     categorySource: row.category_source,
     descriptionNormalized: row.description_normalized,
@@ -204,6 +207,7 @@ export class ClassificationQualityRepository {
 
     const result = await this.pool.query<QueueRow>(
       `select unclassified.id, unclassified.financial_account_id,
+              unclassified.analytics_currency as account_currency,
               unclassified.analytics_amount_signed::text as account_currency_amount_signed,
               unclassified.description_original, unclassified.description_normalized,
               unclassified.transaction_local_date::text,

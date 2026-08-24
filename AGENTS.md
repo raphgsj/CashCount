@@ -114,7 +114,11 @@ record; the versioned implementation plan is the canonical specification.
   PostgreSQL-numeric percentages, and a bounded stable-keyset unclassified queue. Explicit user
   clears and missing-conversion warnings remain visible; no provider identity or raw payload is
   exposed.
-- The next ticket is PF-057, which adds the missing-enrichment regression suite.
+- PF-057 adds an end-to-end sanitized regression proving nullable category/merchant behavior across
+  provider mapping, import/re-import, deterministic rules, analytics, bill reconciliation, and the
+  quality queue. Shared strict web-owner and bounded identifier-free MCP schemas treat missing
+  enrichment as unclassified data; they do not implement either later service.
+- The next ticket is PF-058, which adds the currency and timezone regression suite.
   Do not imply that analytics services, product authentication, general repositories, or product UI
   exist.
 - ADRs 0008, 0009, and 0010 define mandatory credential, workspace, provider-identity, signed-amount,

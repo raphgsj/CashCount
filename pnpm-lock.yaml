@@ -78,6 +78,9 @@ importers:
         specifier: workspace:*
         version: link:../../packages/provider-pluggy
     devDependencies:
+      '@cashcount/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       '@cashcount/test-fixtures':
         specifier: workspace:*
         version: link:../../packages/test-fixtures
@@ -99,7 +102,11 @@ importers:
         specifier: 4.4.3
         version: 4.4.3
 
-  packages/contracts: {}
+  packages/contracts:
+    dependencies:
+      zod:
+        specifier: 4.4.3
+        version: 4.4.3
 
   packages/db:
     dependencies:

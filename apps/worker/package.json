@@ -10,6 +10,7 @@
     "@cashcount/provider-pluggy": "workspace:*"
   },
   "devDependencies": {
+    "@cashcount/contracts": "workspace:*",
     "@cashcount/test-fixtures": "workspace:*"
   },
   "scripts": {

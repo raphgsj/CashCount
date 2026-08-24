@@ -4,6 +4,9 @@
   "private": true,
   "type": "module",
   "sideEffects": false,
+  "dependencies": {
+    "zod": "4.4.3"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -13,6 +16,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "lint": "eslint src --max-warnings=0",
+    "test": "vitest run src/missing-enrichment-contracts.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   }
 }
