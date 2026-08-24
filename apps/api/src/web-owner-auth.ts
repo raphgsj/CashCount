@@ -1,16 +1,23 @@
-import { createHash, timingSafeEqual } from 'node:crypto';
+import { verifyStrictBearerCredential } from './bearer-credential.js';
 
-function credentialDigest(value: string): Buffer {
-  return createHash('sha256').update(value, 'utf8').digest();
+export interface WebOwnerPrincipal {
+  role: 'OWNER';
+  service: 'service_web';
+  workspaceId: string;
+}
+
+export function authenticateWebOwnerCredential(
+  authorizationHeader: null | string,
+  expectedSecret: string,
+  workspaceId: string,
+): WebOwnerPrincipal | null {
+  if (!verifyStrictBearerCredential(authorizationHeader, expectedSecret)) return null;
+  return { role: 'OWNER', service: 'service_web', workspaceId };
 }
 
 export function requireWebOwnerCredential(
   authorizationHeader: null | string,
   expectedSecret: string,
 ): boolean {
-  if (authorizationHeader === null) return false;
-  const match = /^Bearer ([^\s,]+)$/u.exec(authorizationHeader);
-  const presented = match?.[1];
-  if (presented === undefined) return false;
-  return timingSafeEqual(credentialDigest(presented), credentialDigest(expectedSecret));
+  return verifyStrictBearerCredential(authorizationHeader, expectedSecret);
 }

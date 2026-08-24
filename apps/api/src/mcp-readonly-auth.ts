@@ -1,18 +1,21 @@
 import { verifyStrictBearerCredential } from './bearer-credential.js';
 
-export interface PluggyWebhookPrincipal {
-  service: 'service_webhook';
+export interface McpReadOnlyPrincipal {
+  role: 'READONLY';
+  service: 'service_mcp_readonly';
+  workspaceId: string;
 }
 
-export function authenticatePluggyWebhookCredential(
+export function authenticateMcpReadOnlyCredential(
   authorizationHeader: null | string,
   expectedSecret: string,
-): PluggyWebhookPrincipal | null {
+  workspaceId: string,
+): McpReadOnlyPrincipal | null {
   if (!verifyStrictBearerCredential(authorizationHeader, expectedSecret)) return null;
-  return { service: 'service_webhook' };
+  return { role: 'READONLY', service: 'service_mcp_readonly', workspaceId };
 }
 
-export function requirePluggyWebhookCredential(
+export function requireMcpReadOnlyCredential(
   authorizationHeader: null | string,
   expectedSecret: string,
 ): boolean {

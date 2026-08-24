@@ -5,7 +5,7 @@ owner's financial data through a provider adapter, preserves normalized history 
 and exposes deterministic analytics to an authenticated web application and a read-only MCP
 server.
 
-**Phases 0 through 5 are complete:**
+**Phases 0 through 5 are complete; Phase 6 is in progress through PF-060:**
 
 - **PF-001** established the monorepo and application/package foundations.
 - **PF-002** added validated application environments and production safety constraints.
@@ -145,15 +145,19 @@ server.
 - **PF-058** added a sanitized dual-currency and timezone regression suite that preserves exact
   original and account-currency values, refuses implicit conversion, propagates unconverted-data
   warnings through consumer contracts, and verifies UTC/local boundaries in São Paulo and Tokyo.
+- **PF-060** replaced the API shell with a Fastify service framework, request-identified liveness
+  and database readiness, development-only generated OpenAPI, bounded problem responses, and
+  independent fixed-workspace web-owner, MCP-read-only, and webhook credential guards with
+  cross-boundary rejection.
 
 PF-003 through PF-006 are architecture-documentation milestones; executable implementation now
 extends through Phase 5's infrastructure, database, provider/import, queue/worker, classification,
 and regression-test boundaries.
 The persistent worker currently claims its implemented `PROCESS_WEBHOOK` and `SYNC_CONNECTION` job
 types; scheduled reconciliation remains an independent terminating command, and other future queue
-job handlers are not yet registered. The repository intentionally contains no product
-authentication, analytics service, general financial-data repositories, product UI, or production
-secrets. The next ticket is **PF-060: API framework, authentication, and roles**.
+job handlers are not yet registered. The repository intentionally contains no end-user OAuth/session
+authentication, analytics API, account/card API, product UI, or production secrets. The next ticket
+is **PF-061: Account and card endpoints**.
 
 The accepted decisions are indexed in [`docs/adr/`](docs/adr/README.md). In particular, ADRs 0008
 through 0010 are the implementation contracts for credential boundaries, workspace integrity, and
@@ -235,7 +239,7 @@ the web credential.
 ```text
 apps/
   web/        configuration-validated shell; future Next.js web application
-  api/        configuration-validated shell; future Fastify Finance API
+  api/        Fastify Finance API framework, service auth, health, webhook, and sync operations
   worker/     configuration-validated shell; future durable background worker
   mcp/        configuration-validated shell; future read-only MCP service
 packages/

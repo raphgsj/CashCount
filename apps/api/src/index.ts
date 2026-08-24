@@ -6,7 +6,7 @@ import {
 } from '@cashcount/db/webhook';
 import { SyncOperationalRepository } from '@cashcount/db/operational';
 
-import { createApiServer } from './webhook-route.js';
+import { createApiServer } from './api-server.js';
 
 export const applicationName = '@cashcount/api' as const;
 export const config = parseApiConfig(process.env);
@@ -25,12 +25,19 @@ const encryption = new PayloadEncryptionService({
 });
 const server = createApiServer({
   inbox: new WebhookInboxRepository(pool, encryption),
+  mcpToken: config.MCP_TO_API_READONLY_TOKEN,
+  nodeEnvironment: config.NODE_ENV,
   operational: {
     repository: new SyncOperationalRepository(pool),
     webToken: config.WEB_TO_API_TOKEN,
     workspaceId: config.API_WORKSPACE_ID,
   },
+  readiness: async () => {
+    await pool.query('select 1');
+    return true;
+  },
   webhookSecret: config.PLUGGY_WEBHOOK_SECRET,
+  workspaceId: config.API_WORKSPACE_ID,
 });
 
-server.listen(port);
+await server.listen({ host: '0.0.0.0', port });

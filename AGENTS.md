@@ -121,9 +121,11 @@ record; the versioned implementation plan is the canonical specification.
 - PF-058 completes Phase 5 with dual-currency and timezone regression coverage for exact original
   and account-currency values, explicit unconverted warnings, UTC/local boundaries, and non-São-
   Paulo workspaces through shared consumer contracts.
-- The next ticket is PF-060, which adds the API framework, authentication, and roles.
-  Do not imply that analytics services, product authentication, general repositories, or product UI
-  exist.
+- PF-060 starts Phase 6 with Fastify, request-identified liveness/database readiness, bounded
+  problems, development-only generated OpenAPI, and independent fixed-workspace web-owner,
+  MCP-read-only, and webhook credential guards with cross-boundary rejection.
+- The next ticket is PF-061, which adds account and card endpoints. Do not imply that analytics
+  routes, end-user OAuth/session authentication, account/card endpoints, or product UI exist.
 - ADRs 0008, 0009, and 0010 define mandatory credential, workspace, provider-identity, signed-amount,
   and bill-reconciliation behavior for subsequent tickets.
 - Update this section and the root README together whenever a PF ticket or phase is completed.

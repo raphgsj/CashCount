@@ -7,6 +7,8 @@
     "@cashcount/config": "workspace:*",
     "@cashcount/db": "workspace:*",
     "@cashcount/provider-pluggy": "workspace:*",
+    "@fastify/swagger": "9.8.1",
+    "fastify": "5.12.1",
     "zod": "4.4.3"
   },
   "scripts": {
@@ -14,7 +16,7 @@
     "build": "tsc -p tsconfig.json",
     "lint": "eslint src --max-warnings=0",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run src/config.test.ts src/pluggy-webhook-schema.test.ts src/webhook-auth.test.ts src/web-owner-auth.test.ts src/sync-operational-route.test.ts src/webhook-route.test.ts",
+    "test": "vitest run src/config.test.ts src/pluggy-webhook-schema.test.ts src/webhook-auth.test.ts src/web-owner-auth.test.ts src/auth-role-matrix.test.ts src/sync-operational-route.test.ts src/webhook-route.test.ts src/api-server.test.ts",
     "test:integration": "vitest run src/webhook-route.integration.test.ts src/sync-operational-route.integration.test.ts"
   }
 }

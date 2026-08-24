@@ -1,9 +1,26 @@
 # API application
 
-`@cashcount/api` currently exposes only `POST /webhooks/pluggy`. PF-040 authenticates a strict
-`Authorization: Bearer <PLUGGY_WEBHOOK_SECRET>` header with fixed-length digest comparison, accepts
-only `application/json`, and enforces a 256 KiB limit from both `Content-Length` and the received
-stream.
+`@cashcount/api` is the Fastify Finance API service. It exposes request-identified process liveness
+at `GET /health/live` and database-backed readiness at `GET /health/ready`; readiness performs only
+a lightweight PostgreSQL query and never calls Pluggy. Responses disable caching, bounded failures
+use problem objects without stack traces, and unknown routes fail closed.
+
+Three independent strict bearer guards bind credentials to server-owned principals:
+
+- `WEB_TO_API_TOKEN` → `service_web`, owner role, configured `API_WORKSPACE_ID`;
+- `MCP_TO_API_READONLY_TOKEN` → `service_mcp_readonly`, read-only role, the same configured workspace;
+- `PLUGGY_WEBHOOK_SECRET` → `service_webhook`, with workspace determined only from stored provider
+  identity.
+
+The API rejects detectable credential reuse and route-dependency workspace mismatch. A caller
+cannot provide a role or workspace. Generated OpenAPI is available at `GET /documentation/json`
+only when `NODE_ENV=development`; it is absent in test and production.
+
+PF-040's `POST /webhooks/pluggy` route retains its isolated webhook guard, accepts only
+`application/json`, and enforces a 256 KiB limit before persistence. PF-045's bounded web-owner sync
+run, dead-letter, retry, and manual-reconciliation routes now run through Fastify without expanding
+their authorization surface. The MCP guard is implemented for later approved read-only routes but
+has no general or administrative route access.
 
 The route validates the ten first-wave Item/transaction events documented by Pluggy, rejects all
 payment event types, maps workspace scope only through stored Item/account identities, encrypts the
@@ -12,8 +29,8 @@ job containing only the internal inbox ID. Unknown or ambiguous identities remai
 `UNMAPPED` with a nullable-workspace repair job. Duplicate deliveries return the same `202` without
 creating another row or job.
 
-No provider client is a dependency of the API webhook route. Provider retrieval and event handling
-remain later worker tickets; the ingestion response follows only the bounded database transaction.
+No provider client is invoked by the API webhook route. Provider retrieval and event handling stay
+in the worker; the ingestion response follows only the bounded database transaction.
 
 Payload field requirements are based on the official
 [Pluggy webhook guide](https://docs.pluggy.ai/docs/webhooks). Additive fields are retained in the
