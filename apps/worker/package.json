@@ -14,7 +14,7 @@
     "build": "tsc -p tsconfig.json",
     "lint": "eslint src --max-warnings=0",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run src/config.test.ts src/discover-connections.test.ts",
+    "test": "vitest run src/config.test.ts src/discover-connections.test.ts src/account-import.test.ts",
     "sync:discover": "tsx src/discover-cli.ts"
   }
 }

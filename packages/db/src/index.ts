@@ -1,5 +1,11 @@
 export const packageName = '@cashcount/db' as const;
 
+export {
+  AccountImportInvariantError,
+  AccountImportRepository,
+  type AccountImportResult,
+  type AccountImportTarget,
+} from './account-import-repository.js';
 export { createDatabaseClient, type DatabaseClient } from './client.js';
 export { defaultMigrationsFolder, runMigrations } from './migrations.js';
 export {

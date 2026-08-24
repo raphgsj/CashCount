@@ -4,11 +4,20 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { parseDatabaseConfig } from '@cashcount/config';
-import type { ProviderConnectionDto } from '@cashcount/provider-core';
+import {
+  providerAccountSchema,
+  type ProviderAccountDto,
+  type ProviderConnectionDto,
+} from '@cashcount/provider-core';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Client, Pool } from 'pg';
 import { describe, expect, it } from 'vitest';
 
+import {
+  AccountImportInvariantError,
+  AccountImportRepository,
+} from './account-import-repository.js';
+import { PayloadEncryptionService, payloadCanonicalizationVersion } from './encryption.js';
 import { defaultMigrationsFolder, runMigrations } from './migrations.js';
 import { ProviderConnectionRepository } from './provider-connection-repository.js';
 import * as schema from './schema.js';
@@ -266,6 +275,196 @@ describe('database migrations', () => {
         await expect(
           client.query(`delete from workspace where id = '${syntheticIdentitySeed.workspace.id}'`),
         ).rejects.toMatchObject({ code: '23001' });
+      } finally {
+        await client.end();
+      }
+    });
+  }, 30_000);
+
+  it('encrypts account evidence and idempotently upserts only masked normalized accounts', async () => {
+    await withTemporaryDatabase(async (connectionString) => {
+      await runMigrations(connectionString);
+      await seedSyntheticIdentity(connectionString, 'test');
+
+      const client = new Client({ connectionString });
+      const workspaceId = syntheticIdentitySeed.workspace.id;
+      const providerConnectionId = '40000000-0000-4000-8000-000000000031';
+      const externalConnectionId = 'synthetic-account-import-item';
+      const externalAccountId = 'synthetic-account-import-account';
+      const encryption = new PayloadEncryptionService({
+        activeKeyVersion: 7,
+        keyring: new Map([[7, new Uint8Array(32).fill(31)]]),
+      });
+      const account: ProviderAccountDto = providerAccountSchema.parse({
+        accountSubtype: 'CHECKING_ACCOUNT',
+        accountType: 'CHECKING',
+        availableBalance: '123.450000',
+        availableCreditLimit: null,
+        closingDay: null,
+        creditLimit: null,
+        currency: 'BRL',
+        currentBalance: '123.450000',
+        dueDay: null,
+        externalAccountId,
+        externalConnectionId,
+        institutionName: 'Synthetic Fixture Bank',
+        isActive: true,
+        maskedNumber: '6789',
+        name: 'Synthetic checking',
+        providerUpdatedAt: '2026-08-23T12:00:00.000Z',
+        raw: { confidentialAccountNumber: '000123456789', revision: 'first' },
+      });
+
+      try {
+        await client.connect();
+        await client.query(
+          `insert into provider_connection (
+             id, workspace_id, provider, external_connection_id, external_connector_id, display_name
+           ) values ($1, $2, 'PLUGGY', $3, 'synthetic-connector', 'Synthetic Fixture Bank')`,
+          [providerConnectionId, workspaceId, externalConnectionId],
+        );
+        const repository = new AccountImportRepository(drizzle({ client, schema }));
+        await expect(
+          repository.getImportTarget(workspaceId, providerConnectionId),
+        ).resolves.toEqual({ externalConnectionId, localStatus: 'ACTIVE' });
+        await expect(repository.getImportTarget(randomUUID(), providerConnectionId)).resolves.toBe(
+          null,
+        );
+
+        await expect(
+          repository.importAccounts(
+            workspaceId,
+            providerConnectionId,
+            externalConnectionId,
+            [account],
+            encryption,
+            new Date('2026-08-23T13:00:00.000Z'),
+          ),
+        ).resolves.toEqual({
+          accountsInserted: 1,
+          accountsSeen: 1,
+          accountsUpdated: 0,
+          rawSnapshotsInserted: 1,
+        });
+
+        const normalized = await client.query<{
+          current_balance: string;
+          latest_raw_object_id: string;
+          masked_number: string;
+        }>(
+          `select current_balance, latest_raw_object_id, masked_number
+           from financial_account
+           where workspace_id = $1 and provider = 'PLUGGY' and external_account_id = $2`,
+          [workspaceId, externalAccountId],
+        );
+        expect(normalized.rows).toHaveLength(1);
+        expect(normalized.rows[0]).toMatchObject({
+          current_balance: '123.450000',
+          masked_number: '6789',
+        });
+        const latestRawObjectId = normalized.rows[0]?.latest_raw_object_id;
+        expect(latestRawObjectId).toBeTypeOf('string');
+
+        const evidence = await client.query<{
+          canonicalization_version: string;
+          id: string;
+          key_version: number;
+          payload_ciphertext: Buffer;
+          payload_iv: Buffer;
+          payload_sha256: string;
+          payload_tag: Buffer;
+        }>(
+          `select id, payload_ciphertext, payload_iv, payload_tag, key_version,
+                  payload_sha256, canonicalization_version
+           from provider_raw_object
+           where workspace_id = $1 and provider = 'PLUGGY' and entity_type = 'ACCOUNT'
+             and external_id = $2`,
+          [workspaceId, externalAccountId],
+        );
+        expect(evidence.rows).toHaveLength(1);
+        const rawSnapshot = evidence.rows[0];
+        if (rawSnapshot === undefined) throw new Error('Expected encrypted account evidence.');
+        expect(rawSnapshot.id).toBe(latestRawObjectId);
+        expect(rawSnapshot.key_version).toBe(7);
+        expect(rawSnapshot.canonicalization_version).toBe(payloadCanonicalizationVersion);
+        expect(rawSnapshot.payload_ciphertext.toString('utf8')).not.toContain('000123456789');
+        expect(
+          encryption.decryptJson(
+            {
+              authenticationTag: rawSnapshot.payload_tag,
+              canonicalizationVersion: payloadCanonicalizationVersion,
+              ciphertext: rawSnapshot.payload_ciphertext,
+              keyVersion: rawSnapshot.key_version,
+              nonce: rawSnapshot.payload_iv,
+              payloadSha256: rawSnapshot.payload_sha256,
+            },
+            {
+              entityType: 'ACCOUNT',
+              externalId: externalAccountId,
+              provider: 'PLUGGY',
+              recordId: rawSnapshot.id,
+              storageTable: 'provider_raw_object',
+              workspaceId,
+            },
+          ),
+        ).toEqual({ confidentialAccountNumber: '000123456789', revision: 'first' });
+
+        await expect(
+          repository.importAccounts(
+            workspaceId,
+            providerConnectionId,
+            externalConnectionId,
+            [account],
+            encryption,
+            new Date('2026-08-23T14:00:00.000Z'),
+          ),
+        ).resolves.toEqual({
+          accountsInserted: 0,
+          accountsSeen: 1,
+          accountsUpdated: 1,
+          rawSnapshotsInserted: 0,
+        });
+        const updatedAccount = providerAccountSchema.parse({
+          ...account,
+          currentBalance: '200.100000',
+          raw: { confidentialAccountNumber: '000123456789', revision: 'second' },
+        });
+        await expect(
+          repository.importAccounts(
+            workspaceId,
+            providerConnectionId,
+            externalConnectionId,
+            [updatedAccount],
+            encryption,
+            new Date('2026-08-23T15:00:00.000Z'),
+          ),
+        ).resolves.toMatchObject({
+          accountsInserted: 0,
+          accountsUpdated: 1,
+          rawSnapshotsInserted: 1,
+        });
+        expect(
+          await queryCount(
+            client,
+            `select count(*)::integer as count from provider_raw_object where entity_type = 'ACCOUNT'`,
+          ),
+        ).toBe(2);
+        expect(
+          await queryCount(
+            client,
+            `select count(*)::integer as count from financial_account where workspace_id = '${workspaceId}' and external_account_id = '${externalAccountId}'`,
+          ),
+        ).toBe(1);
+
+        await expect(
+          repository.importAccounts(
+            workspaceId,
+            providerConnectionId,
+            externalConnectionId,
+            [{ ...account, externalConnectionId: 'different-item' }],
+            encryption,
+          ),
+        ).rejects.toBeInstanceOf(AccountImportInvariantError);
       } finally {
         await client.end();
       }

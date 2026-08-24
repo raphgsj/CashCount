@@ -5,7 +5,7 @@ owner's financial data through a provider adapter, preserves normalized history 
 and exposes deterministic analytics to an authenticated web application and a read-only MCP
 server.
 
-**Phases 0 through 2 are complete, and Phase 3 is in progress through PF-031:**
+**Phases 0 through 2 are complete, and Phase 3 is in progress through PF-032:**
 
 - **PF-001** established the monorepo and application/package foundations.
 - **PF-002** added validated application environments and production safety constraints.
@@ -59,14 +59,17 @@ server.
 - **PF-031** added an explicit-workspace Pluggy connection discovery command that validates the
   target workspace before provider access, atomically assigns normalized Item metadata, preserves
   operator-disabled connections, and prints only sanitized institution labels and local states.
+- **PF-032** added workspace-scoped account import with connection-lock revalidation, active-key
+  encrypted raw snapshots, canonical-hash snapshot deduplication, exact normalized balances,
+  masked-number-only storage, and idempotent account upserts.
 
 PF-003 through PF-006 are architecture-documentation milestones; executable implementation now
 extends through Phase 2's database foundation, deterministic domain policy, validated provider
 adapter, complete synthetic fixture matrix, explicit lifecycle mapping, and PF-030's versioned
-encryption boundary plus PF-031's controlled connection discovery entrypoint. The repository
-intentionally contains no account/transaction/bill import pipeline, rule evaluator, analytics
-service, general financial-data repositories, queue worker implementation, product authentication,
-product UI, or production secrets. The next ticket is **PF-032: Account import**.
+encryption boundary plus controlled connection discovery and account import. The repository
+intentionally contains no transaction/bill import pipeline, rule evaluator, analytics service,
+general financial-data repositories, queue worker implementation, product authentication, product
+UI, or production secrets. The next ticket is **PF-033: Transaction import**.
 
 The accepted decisions are indexed in [`docs/adr/`](docs/adr/README.md). In particular, ADRs 0008
 through 0010 are the implementation contracts for credential boundaries, workspace integrity, and
