@@ -545,7 +545,7 @@ describe('database migrations', () => {
           categoryName: null,
           creditCardMetadata: null,
           currency: 'USD',
-          description: '  Synthetic   Foreign Purchase  ',
+          description: 'MP *Synthetic Foreign Purchase 00392',
           descriptionRaw: null,
           externalAccountId: externalCheckingId,
           externalTransactionId: 'synthetic-checking-transaction',
@@ -713,6 +713,7 @@ describe('database migrations', () => {
           account_currency_amount_signed: null | string;
           credit_card_bill_id: null | string;
           description_normalized: string;
+          description_original: string;
           provider_amount_signed: string;
           provider_currency: string;
           provider_transaction_id: string;
@@ -724,7 +725,8 @@ describe('database migrations', () => {
           `select provider_transaction_id, provider_amount_signed, provider_currency,
                   account_currency_amount_signed, account_currency,
                   transaction_local_date::text as transaction_local_date,
-                  description_normalized, system_direction, system_financial_role,
+                  description_original, description_normalized,
+                  system_direction, system_financial_role,
                   system_financial_role_source,
                   credit_card_bill_id
            from financial_transaction
@@ -738,6 +740,7 @@ describe('database migrations', () => {
             account_currency_amount_signed: null,
             credit_card_bill_id: billId,
             description_normalized: 'synthetic unresolved card credit',
+            description_original: 'Synthetic unresolved card credit',
             provider_amount_signed: '-25.000000',
             provider_currency: 'BRL',
             provider_transaction_id: 'synthetic-card-transaction',
@@ -751,6 +754,7 @@ describe('database migrations', () => {
             account_currency_amount_signed: '-67.890000',
             credit_card_bill_id: null,
             description_normalized: 'synthetic foreign purchase',
+            description_original: 'MP *Synthetic Foreign Purchase 00392',
             provider_amount_signed: '-12.340000',
             provider_currency: 'USD',
             provider_transaction_id: 'synthetic-checking-transaction',

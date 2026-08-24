@@ -5,7 +5,7 @@ owner's financial data through a provider adapter, preserves normalized history 
 and exposes deterministic analytics to an authenticated web application and a read-only MCP
 server.
 
-**Phases 0 through 4 are complete through PF-046:**
+**Phases 0 through 4 are complete; Phase 5 is in progress through PF-050:**
 
 - **PF-001** established the monorepo and application/package foundations.
 - **PF-002** added validated application environments and production safety constraints.
@@ -106,6 +106,10 @@ server.
 - **PF-046** hardened lease timestamps against shortening and regression, reports lease ownership
   loss distinctly, aborts affected handlers, and proves active dedupe, exact-expiry rejection,
   stale-owner completion rejection, expired-lease reclaim, and signal-driven draining.
+- **PF-050** added a versioned pure description normalizer with conservative Unicode, whitespace,
+  punctuation, exact processor-prefix, likely store-suffix, installment, and transaction-reference
+  handling; sanitized fixtures prove every removed fragment remains structured while transaction
+  import preserves the exact original text and stores the canonical matching key.
 
 PF-003 through PF-006 are architecture-documentation milestones; executable implementation now
 extends through Phase 2's database foundation, deterministic domain policy, validated provider
@@ -115,8 +119,7 @@ The persistent worker currently claims its implemented `PROCESS_WEBHOOK` and `SY
 types; scheduled reconciliation remains an independent terminating command, and other future queue
 job handlers are not yet registered. The repository intentionally contains no product
 authentication, rule evaluator, analytics service, general financial-data repositories, product
-UI, or production secrets. The next ticket is **PF-050: Description normalizer**, which starts
-Phase 5.
+UI, or production secrets. The next ticket is **PF-051: Merchant resolver**.
 
 The accepted decisions are indexed in [`docs/adr/`](docs/adr/README.md). In particular, ADRs 0008
 through 0010 are the implementation contracts for credential boundaries, workspace integrity, and

@@ -85,9 +85,13 @@ record; the versioned implementation plan is the canonical specification.
 - PF-046 completes Phase 4 with monotonic lease timestamps, distinct lost-lease signaling and
   handler cancellation, and database-backed proof of running-job dedupe, exact-expiry rejection,
   expired-lease reclaim, stale-owner completion rejection, and graceful signal-driven draining.
-- The next ticket is PF-050, which starts Phase 5 with a pure description normalizer and fixture
-  tests. Do not imply that product authentication, rule evaluation, analytics services, general
-  repositories, or product UI exist.
+- PF-050 starts Phase 5 with a versioned pure description normalizer that conservatively handles
+  Unicode, punctuation, exact processor prefixes, likely store suffixes, installment metadata, and
+  transaction references. Sanitized fixtures prove removed fragments remain structured, and
+  transaction import preserves original text while storing the canonical matching key.
+- The next ticket is PF-051, which implements merchant aliases, canonical merchants, and provisional
+  candidates. Do not imply that rule evaluation, analytics services, product authentication,
+  general repositories, or product UI exist.
 - ADRs 0008, 0009, and 0010 define mandatory credential, workspace, provider-identity, signed-amount,
   and bill-reconciliation behavior for subsequent tickets.
 - Update this section and the root README together whenever a PF ticket or phase is completed.

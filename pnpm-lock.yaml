@@ -96,6 +96,9 @@ importers:
 
   packages/db:
     dependencies:
+      '@cashcount/classification':
+        specifier: workspace:*
+        version: link:../classification
       '@cashcount/config':
         specifier: workspace:*
         version: link:../config

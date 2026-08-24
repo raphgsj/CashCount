@@ -30,6 +30,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@cashcount/classification": "workspace:*",
     "@cashcount/config": "workspace:*",
     "@cashcount/domain": "workspace:*",
     "@cashcount/provider-core": "workspace:*",

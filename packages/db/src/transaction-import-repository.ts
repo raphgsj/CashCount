@@ -4,6 +4,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 
+import { normalizeTransactionDescription } from '@cashcount/classification';
 import {
   accountTypes,
   billForecastMonthToBankDate,
@@ -71,16 +72,6 @@ export class TransactionImportInvariantError extends Error {
 
 function isAccountType(value: string): value is AccountType {
   return accountTypes.includes(value as AccountType);
-}
-
-function normalizeDescription(value: string): string {
-  const normalized = value
-    .normalize('NFKC')
-    .replace(/[\p{Cc}\p{Cf}]/gu, ' ')
-    .replace(/\s+/gu, ' ')
-    .trim()
-    .toLowerCase();
-  return normalized.length === 0 ? 'unprintable' : normalized;
 }
 
 function fingerprint(input: {
@@ -505,7 +496,8 @@ export class TransactionImportRepository {
         const transactionLocalDate = deriveFinancialDate(item.transactionAt, timezone);
         const purchaseLocalDate =
           item.purchaseAt === null ? null : deriveFinancialDate(item.purchaseAt, timezone);
-        const descriptionNormalized = normalizeDescription(item.description);
+        const descriptionNormalized =
+          normalizeTransactionDescription(item.description).normalized || 'unprintable';
         const transactionFingerprint = fingerprint({
           accountId: account.financialAccountId,
           amountSigned: item.amountSigned,
