@@ -68,6 +68,10 @@ importers:
       '@cashcount/provider-pluggy':
         specifier: workspace:*
         version: link:../../packages/provider-pluggy
+    devDependencies:
+      '@cashcount/test-fixtures':
+        specifier: workspace:*
+        version: link:../../packages/test-fixtures
 
   packages/analytics: {}
 

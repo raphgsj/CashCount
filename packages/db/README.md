@@ -35,6 +35,8 @@ workspace/account-scoped transaction imports with exact values and dates, provid
 revisions, coverage and sync-run progress, and no user-state mutation surface. PF-034 adds scoped
 credit-card bill, payment, and finance-charge imports with nullable provider fields, encrypted
 hash-deduplicated evidence, idempotent child identities, and existing-transaction back-linking only.
+PF-035 exercises those repositories together against the sanitized provider fixture matrix twice,
+verifying stable normalized/raw/child counts and preservation of transaction user state.
 
 From the repository root:
 

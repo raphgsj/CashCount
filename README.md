@@ -5,7 +5,7 @@ owner's financial data through a provider adapter, preserves normalized history 
 and exposes deterministic analytics to an authenticated web application and a read-only MCP
 server.
 
-**Phases 0 through 2 are complete, and Phase 3 is in progress through PF-034:**
+**Phases 0 through 2 are complete, and Phase 3 is in progress through PF-035:**
 
 - **PF-001** established the monorepo and application/package foundations.
 - **PF-002** added validated application environments and production safety constraints.
@@ -69,15 +69,17 @@ server.
 - **PF-034** added workspace-scoped credit-card bill import with encrypted, hash-deduplicated bill,
   payment, and finance-charge evidence; nullable unsupported fields; idempotent child upserts; and
   scoped transaction back-linking without synthesizing financial transactions.
+- **PF-035** added an explicit workspace/connection full-import command and repeated sanitized
+  account→transaction→bill regression coverage proving normalized-row, raw-snapshot, and bill-child
+  idempotence while preserving user-owned transaction state.
 
 PF-003 through PF-006 are architecture-documentation milestones; executable implementation now
 extends through Phase 2's database foundation, deterministic domain policy, validated provider
 adapter, complete synthetic fixture matrix, explicit lifecycle mapping, and PF-030's versioned
 encryption boundary plus controlled connection discovery and account, transaction, and bill import.
-The repository intentionally contains no repeated-full-sync regression command, replacement
-detector, rule evaluator, analytics service, general financial-data repositories, queue worker
-implementation, product authentication, product UI, or production secrets. The next ticket is
-**PF-035: Repeated-sync regression**.
+The repository intentionally contains no replacement detector, queue worker implementation, product
+authentication, rule evaluator, analytics service, general financial-data repositories, product UI,
+or production secrets. The next ticket is **PF-036: Account history coverage**.
 
 The accepted decisions are indexed in [`docs/adr/`](docs/adr/README.md). In particular, ADRs 0008
 through 0010 are the implementation contracts for credential boundaries, workspace integrity, and
@@ -126,6 +128,10 @@ pnpm test:integration
 After configuring the worker environment, discover and explicitly assign Pluggy Items to one
 existing workspace with `pnpm --filter @cashcount/worker sync:discover --workspace
 <workspace-uuid>`. The command prints only sanitized institution labels and local lifecycle states.
+
+Run one controlled full import only after discovery and explicit assignment with `pnpm sync:full
+--workspace <workspace-uuid> --connection <connection-uuid>`. The command imports accounts, V2
+transactions, and bills in dependency order and prints only aggregate counts.
 
 The integration gate creates a temporary empty PostgreSQL database, applies migrations twice to
 prove idempotence, verifies the migration journal, and removes the temporary database.

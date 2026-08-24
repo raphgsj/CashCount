@@ -40,6 +40,8 @@ export default tseslint.config(
       'packages/db/src/*.integration.test.ts',
       'apps/*/src/index.ts',
       'apps/worker/src/discover-cli.ts',
+      'apps/worker/src/full-import-cli.ts',
+      'apps/worker/src/*.integration.test.ts',
     ],
     rules: {
       'no-restricted-syntax': 'off',

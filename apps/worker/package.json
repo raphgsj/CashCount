@@ -9,12 +9,17 @@
     "@cashcount/provider-core": "workspace:*",
     "@cashcount/provider-pluggy": "workspace:*"
   },
+  "devDependencies": {
+    "@cashcount/test-fixtures": "workspace:*"
+  },
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc -p tsconfig.json",
     "lint": "eslint src --max-warnings=0",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run src/config.test.ts src/discover-connections.test.ts src/account-import.test.ts src/transaction-import.test.ts src/bill-import.test.ts",
-    "sync:discover": "tsx src/discover-cli.ts"
+    "test": "vitest run src/config.test.ts src/discover-connections.test.ts src/account-import.test.ts src/transaction-import.test.ts src/bill-import.test.ts src/full-import.test.ts",
+    "test:integration": "vitest run src/full-import.integration.test.ts",
+    "sync:discover": "tsx src/discover-cli.ts",
+    "sync:full": "tsx src/full-import-cli.ts"
   }
 }
