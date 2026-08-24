@@ -6,8 +6,10 @@ import { join } from 'node:path';
 import { parseDatabaseConfig } from '@cashcount/config';
 import {
   providerAccountSchema,
+  providerTransactionSchema,
   type ProviderAccountDto,
   type ProviderConnectionDto,
+  type ProviderTransactionDto,
 } from '@cashcount/provider-core';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Client, Pool } from 'pg';
@@ -22,6 +24,10 @@ import { defaultMigrationsFolder, runMigrations } from './migrations.js';
 import { ProviderConnectionRepository } from './provider-connection-repository.js';
 import * as schema from './schema.js';
 import { seedSyntheticIdentity, syntheticIdentitySeed } from './seed.js';
+import {
+  TransactionImportInvariantError,
+  TransactionImportRepository,
+} from './transaction-import-repository.js';
 import {
   TransactionNotFoundError,
   TransactionUserStateConflictError,
@@ -275,6 +281,403 @@ describe('database migrations', () => {
         await expect(
           client.query(`delete from workspace where id = '${syntheticIdentitySeed.workspace.id}'`),
         ).rejects.toMatchObject({ code: '23001' });
+      } finally {
+        await client.end();
+      }
+    });
+  }, 30_000);
+
+  it('imports transaction pages idempotently with exact evidence, coverage, and user-state isolation', async () => {
+    await withTemporaryDatabase(async (connectionString) => {
+      await runMigrations(connectionString);
+      await seedSyntheticIdentity(connectionString, 'test');
+
+      const client = new Client({ connectionString });
+      const workspaceId = syntheticIdentitySeed.workspace.id;
+      const providerConnectionId = '40000000-0000-4000-8000-000000000033';
+      const checkingAccountId = '60000000-0000-4000-8000-000000000033';
+      const cardAccountId = '60000000-0000-4000-8000-000000000034';
+      const billId = '70000000-0000-4000-8000-000000000033';
+      const externalConnectionId = 'synthetic-transaction-import-item';
+      const externalCheckingId = 'synthetic-transaction-checking';
+      const externalCardId = 'synthetic-transaction-card';
+      const externalBillId = 'synthetic-transaction-bill';
+      const encryption = new PayloadEncryptionService({
+        activeKeyVersion: 9,
+        keyring: new Map([[9, new Uint8Array(32).fill(33)]]),
+      });
+      const checkingTransaction = (
+        overrides: Record<string, unknown> = {},
+      ): ProviderTransactionDto =>
+        providerTransactionSchema.parse({
+          accountCurrency: 'BRL',
+          amountInAccountCurrencySigned: '-67.890000',
+          amountSigned: '-12.340000',
+          categoryId: null,
+          categoryName: null,
+          creditCardMetadata: null,
+          currency: 'USD',
+          description: '  Synthetic   Foreign Purchase  ',
+          descriptionRaw: null,
+          externalAccountId: externalCheckingId,
+          externalTransactionId: 'synthetic-checking-transaction',
+          merchant: null,
+          operationType: null,
+          operationTypeAdditionalInfo: null,
+          providerCode: null,
+          providerId: null,
+          providerType: 'DEBIT',
+          purchaseAt: null,
+          raw: { confidentialMarker: 'checking-secret', revision: 'initial' },
+          status: 'POSTED',
+          transactionAt: '2026-08-24T01:30:00.000Z',
+          ...overrides,
+        });
+      const cardTransaction = (overrides: Record<string, unknown> = {}): ProviderTransactionDto =>
+        providerTransactionSchema.parse({
+          accountCurrency: 'BRL',
+          amountInAccountCurrencySigned: null,
+          amountSigned: '-25.000000',
+          categoryId: 'provider-category-hint',
+          categoryName: 'Optional hint',
+          creditCardMetadata: {
+            billForecastMonth: '2026-08',
+            billId: externalBillId,
+            cardLastFour: '4321',
+            feeType: null,
+            feeTypeAdditionalInfo: null,
+            installmentNumber: null,
+            mcc: null,
+            otherCreditAdditionalInfo: null,
+            otherCreditType: null,
+            totalAmount: null,
+            totalInstallments: null,
+          },
+          currency: 'BRL',
+          description: 'Synthetic unresolved card credit',
+          descriptionRaw: null,
+          externalAccountId: externalCardId,
+          externalTransactionId: 'synthetic-card-transaction',
+          merchant: null,
+          operationType: null,
+          operationTypeAdditionalInfo: null,
+          providerCode: null,
+          providerId: null,
+          providerType: 'CREDIT',
+          purchaseAt: null,
+          raw: { confidentialMarker: 'card-secret', revision: 'initial' },
+          status: 'POSTED',
+          transactionAt: '2026-08-25T12:00:00.000Z',
+          ...overrides,
+        });
+
+      try {
+        await client.connect();
+        await client.query(
+          `insert into provider_connection (
+             id, workspace_id, provider, external_connection_id, external_connector_id, display_name
+           ) values ($1, $2, 'PLUGGY', $3, 'synthetic-connector', 'Synthetic Fixture Bank')`,
+          [providerConnectionId, workspaceId, externalConnectionId],
+        );
+        await client.query(
+          `insert into financial_account (
+             id, workspace_id, provider_connection_id, provider, external_account_id,
+             account_type, name, institution_name, currency, masked_number
+           ) values
+             ($1, $2, $3, 'PLUGGY', $4, 'CHECKING', 'Synthetic checking', 'Synthetic Bank', 'BRL', '6789'),
+             ($5, $2, $3, 'PLUGGY', $6, 'CREDIT_CARD', 'Synthetic card', 'Synthetic Bank', 'BRL', '4321')`,
+          [
+            checkingAccountId,
+            workspaceId,
+            providerConnectionId,
+            externalCheckingId,
+            cardAccountId,
+            externalCardId,
+          ],
+        );
+        await client.query(
+          `insert into credit_card_bill (
+             id, workspace_id, financial_account_id, provider, external_bill_id, status, currency
+           ) values ($1, $2, $3, 'PLUGGY', $4, 'OPEN', 'BRL')`,
+          [billId, workspaceId, cardAccountId, externalBillId],
+        );
+
+        const repository = new TransactionImportRepository(drizzle({ client, schema }));
+        await expect(
+          repository.startSync(randomUUID(), providerConnectionId, 'INITIAL'),
+        ).rejects.toBeInstanceOf(TransactionImportInvariantError);
+
+        const runImport = async (
+          checking: readonly ProviderTransactionDto[],
+          card: ProviderTransactionDto,
+          observedAt: Date,
+        ) => {
+          const started = await repository.startSync(
+            workspaceId,
+            providerConnectionId,
+            'INITIAL',
+            observedAt,
+          );
+          const checkingAccount = started.accounts.find(
+            (candidate) => candidate.financialAccountId === checkingAccountId,
+          );
+          const cardAccount = started.accounts.find(
+            (candidate) => candidate.financialAccountId === cardAccountId,
+          );
+          if (checkingAccount === undefined || cardAccount === undefined) {
+            throw new Error('Expected both transaction import accounts.');
+          }
+          const checkingResult = await repository.importPage(
+            workspaceId,
+            started.syncRunId,
+            checkingAccount,
+            checking,
+            null,
+            encryption,
+            observedAt,
+          );
+          const cardResult = await repository.importPage(
+            workspaceId,
+            started.syncRunId,
+            cardAccount,
+            [card],
+            null,
+            encryption,
+            observedAt,
+          );
+          await repository.completeAccount(
+            workspaceId,
+            started.syncRunId,
+            checkingAccountId,
+            observedAt,
+          );
+          await repository.completeAccount(
+            workspaceId,
+            started.syncRunId,
+            cardAccountId,
+            observedAt,
+          );
+          const completed = await repository.completeSync(
+            workspaceId,
+            started.syncRunId,
+            observedAt,
+          );
+          return { cardResult, checkingResult, completed };
+        };
+
+        const initial = await runImport(
+          [checkingTransaction()],
+          cardTransaction(),
+          new Date('2026-08-23T13:00:00.000Z'),
+        );
+        expect(initial.completed).toMatchObject({
+          accountsSeen: 2,
+          transactionsDeleted: 0,
+          transactionsInserted: 2,
+          transactionsSeen: 2,
+          transactionsUpdated: 0,
+        });
+        expect(initial.checkingResult.rawSnapshotsInserted).toBe(1);
+        expect(initial.cardResult.rawSnapshotsInserted).toBe(1);
+
+        const normalized = await client.query<{
+          account_currency: string;
+          account_currency_amount_signed: null | string;
+          credit_card_bill_id: null | string;
+          description_normalized: string;
+          provider_amount_signed: string;
+          provider_currency: string;
+          provider_transaction_id: string;
+          system_direction: string;
+          system_financial_role: string;
+          system_financial_role_source: string;
+          transaction_local_date: string;
+        }>(
+          `select provider_transaction_id, provider_amount_signed, provider_currency,
+                  account_currency_amount_signed, account_currency,
+                  transaction_local_date::text as transaction_local_date,
+                  description_normalized, system_direction, system_financial_role,
+                  system_financial_role_source,
+                  credit_card_bill_id
+           from financial_transaction
+           where workspace_id = $1
+           order by provider_transaction_id`,
+          [workspaceId],
+        );
+        expect(normalized.rows).toEqual([
+          {
+            account_currency: 'BRL',
+            account_currency_amount_signed: null,
+            credit_card_bill_id: billId,
+            description_normalized: 'synthetic unresolved card credit',
+            provider_amount_signed: '-25.000000',
+            provider_currency: 'BRL',
+            provider_transaction_id: 'synthetic-card-transaction',
+            system_direction: 'INFLOW',
+            system_financial_role: 'UNKNOWN_CREDIT',
+            system_financial_role_source: 'HEURISTIC',
+            transaction_local_date: '2026-08-25',
+          },
+          {
+            account_currency: 'BRL',
+            account_currency_amount_signed: '-67.890000',
+            credit_card_bill_id: null,
+            description_normalized: 'synthetic foreign purchase',
+            provider_amount_signed: '-12.340000',
+            provider_currency: 'USD',
+            provider_transaction_id: 'synthetic-checking-transaction',
+            system_direction: 'OUTFLOW',
+            system_financial_role: 'PURCHASE',
+            system_financial_role_source: 'HEURISTIC',
+            transaction_local_date: '2026-08-23',
+          },
+        ]);
+        expect(
+          await queryCount(
+            client,
+            `select count(*)::integer as count from provider_raw_object where entity_type = 'TRANSACTION' and key_version = 9`,
+          ),
+        ).toBe(2);
+        expect(
+          await queryCount(client, `select count(*)::integer as count from transaction_user_state`),
+        ).toBe(0);
+        const coverage = await client.query<{
+          history_coverage_status: string;
+          provider_history_earliest_date: string;
+          provider_history_latest_date: string;
+        }>(
+          `select history_coverage_status,
+                  provider_history_earliest_date::text as provider_history_earliest_date,
+                  provider_history_latest_date::text as provider_history_latest_date
+           from financial_account where id = $1`,
+          [checkingAccountId],
+        );
+        expect(coverage.rows[0]).toEqual({
+          history_coverage_status: 'PARTIAL',
+          provider_history_earliest_date: '2026-08-23',
+          provider_history_latest_date: '2026-08-23',
+        });
+
+        const repeated = await runImport(
+          [checkingTransaction()],
+          cardTransaction(),
+          new Date('2026-08-23T14:00:00.000Z'),
+        );
+        expect(repeated.completed).toMatchObject({
+          transactionsDeleted: 0,
+          transactionsInserted: 0,
+          transactionsSeen: 2,
+          transactionsUpdated: 0,
+        });
+        expect(
+          await queryCount(
+            client,
+            `select count(*)::integer as count from provider_raw_object where entity_type = 'TRANSACTION'`,
+          ),
+        ).toBe(2);
+
+        const checkingRow = await client.query<{ id: string }>(
+          `select id from financial_transaction
+           where workspace_id = $1 and provider_transaction_id = 'synthetic-checking-transaction'`,
+          [workspaceId],
+        );
+        const checkingTransactionId = checkingRow.rows[0]?.id;
+        if (checkingTransactionId === undefined) throw new Error('Expected checking transaction.');
+        await client.query(
+          `insert into transaction_user_state (
+             financial_transaction_id, workspace_id, notes, review_status,
+             updated_by_actor_type, updated_by_actor_id
+           ) values ($1, $2, 'Manual note survives sync', 'CONFIRMED', 'USER', 'synthetic-owner')`,
+          [checkingTransactionId, workspaceId],
+        );
+
+        const deleted = checkingTransaction({
+          raw: { confidentialMarker: 'checking-secret', revision: 'deleted' },
+          status: 'DELETED',
+        });
+        const deletionRun = await runImport(
+          [deleted],
+          cardTransaction(),
+          new Date('2026-08-23T15:00:00.000Z'),
+        );
+        expect(deletionRun.completed).toMatchObject({
+          transactionsDeleted: 1,
+          transactionsInserted: 0,
+          transactionsUpdated: 0,
+        });
+        const repeatedDeletionRun = await runImport(
+          [deleted],
+          cardTransaction(),
+          new Date('2026-08-23T15:30:00.000Z'),
+        );
+        expect(repeatedDeletionRun.completed).toMatchObject({
+          transactionsDeleted: 0,
+          transactionsInserted: 0,
+          transactionsUpdated: 0,
+        });
+        const reappeared = checkingTransaction({
+          raw: { confidentialMarker: 'checking-secret', revision: 'reappeared' },
+        });
+        const reappearanceRun = await runImport(
+          [reappeared],
+          cardTransaction(),
+          new Date('2026-08-23T16:00:00.000Z'),
+        );
+        expect(reappearanceRun.completed).toMatchObject({
+          transactionsDeleted: 0,
+          transactionsInserted: 0,
+          transactionsUpdated: 1,
+        });
+        const stateAfterSync = await client.query<{
+          deleted_at: Date | null;
+          notes: string;
+          review_status: string;
+          version: number;
+        }>(
+          `select ft.deleted_at, tus.notes, tus.review_status, tus.version
+           from financial_transaction ft
+           join transaction_user_state tus on tus.workspace_id = ft.workspace_id
+             and tus.financial_transaction_id = ft.id
+           where ft.workspace_id = $1 and ft.id = $2`,
+          [workspaceId, checkingTransactionId],
+        );
+        expect(stateAfterSync.rows).toEqual([
+          {
+            deleted_at: null,
+            notes: 'Manual note survives sync',
+            review_status: 'CONFIRMED',
+            version: 1,
+          },
+        ]);
+        expect(
+          await queryCount(
+            client,
+            `select count(*)::integer as count from transaction_revision where financial_transaction_id = '${checkingTransactionId}'`,
+          ),
+        ).toBe(2);
+
+        const collision = checkingTransaction({
+          externalTransactionId: 'synthetic-checking-collision',
+          raw: { confidentialMarker: 'collision-secret' },
+        });
+        const collisionRun = await runImport(
+          [reappeared, collision],
+          cardTransaction(),
+          new Date('2026-08-23T17:00:00.000Z'),
+        );
+        expect(collisionRun.completed).toMatchObject({
+          transactionsInserted: 1,
+          transactionsSeen: 3,
+        });
+        expect(
+          await queryCount(
+            client,
+            `select count(*)::integer as count from financial_transaction where workspace_id = '${workspaceId}' and duplicate_review_status = 'POSSIBLE'`,
+          ),
+        ).toBe(2);
+        expect(
+          await queryCount(client, `select count(*)::integer as count from transaction_user_state`),
+        ).toBe(1);
       } finally {
         await client.end();
       }

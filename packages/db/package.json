@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "@cashcount/config": "workspace:*",
+    "@cashcount/domain": "workspace:*",
     "@cashcount/provider-core": "workspace:*",
     "drizzle-orm": "0.45.2",
     "lossless-json": "4.3.1",

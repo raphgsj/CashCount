@@ -86,6 +86,9 @@ importers:
       '@cashcount/config':
         specifier: workspace:*
         version: link:../config
+      '@cashcount/domain':
+        specifier: workspace:*
+        version: link:../domain
       '@cashcount/provider-core':
         specifier: workspace:*
         version: link:../provider-core

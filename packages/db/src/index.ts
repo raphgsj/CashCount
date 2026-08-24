@@ -27,6 +27,15 @@ export {
   type AssignedProviderConnection,
 } from './provider-connection-repository.js';
 export {
+  TransactionImportInvariantError,
+  TransactionImportRepository,
+  type TransactionImportAccount,
+  type TransactionPageImportResult,
+  type TransactionSyncResult,
+  type TransactionSyncStart,
+  type TransactionSyncTrigger,
+} from './transaction-import-repository.js';
+export {
   financialRoles,
   TransactionNotFoundError,
   TransactionUserStateConflictError,

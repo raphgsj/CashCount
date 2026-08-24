@@ -6,8 +6,8 @@ adds `provider_connection`, encrypted `provider_raw_object` evidence, the worksp
 `webhook_event` inbox, lease-ready `job_queue`, and `sync_run`. PF-014 adds accounts and history
 coverage, credit-card bills and reconciliation evidence, categories and merchants, exact-numeric
 provider/system transactions, separately owned transaction state, provider-identity continuity, and
-transaction revisions. Repositories, provider integration, queue execution, financial policy, and
-product behavior remain future work. PF-015 adds classification rules/decisions, installment and
+transaction revisions. General repositories, queue execution, and product behavior remain future
+work. PF-015 adds classification rules/decisions, installment and
 recurring series, transaction tags, and bounded audit events. PF-016 adds 12 normal views rooted in
 the canonical effective transaction and supporting review/reconciliation indexes. The views preserve
 explicit user-null overrides, keep incompatible currencies out of totals, distinguish spending from
@@ -29,6 +29,10 @@ row/workspace/provider identity bound as authenticated data. It supports active-
 mixed-version reads, verified re-encryption, referenced-key checks, and guarded retirement. The
 append-only rotation migration records canonicalization versions, enforces 12-byte nonces and
 16-byte tags, and adds durable resumable progress in `encryption_rotation_run`.
+PF-031 adds explicit-workspace provider-connection assignment. PF-032 adds locked account imports
+with encrypted, hash-deduplicated raw evidence and masked normalized identifiers. PF-033 adds
+workspace/account-scoped transaction imports with exact values and dates, provider lifecycle
+revisions, coverage and sync-run progress, and no user-state mutation surface.
 
 From the repository root:
 
@@ -55,15 +59,16 @@ round-trips, transaction continuity, bill reconciliation account roles, intellig
 idempotency, series scope, tag scope, and bounded audit records. Each temporary database is dropped
 afterward. They also verify effective override/provenance behavior, currency-safe spend/cash-flow
 effects, reconciliation warnings, history/freshness, review queues, monthly summaries, and
-installment commitments. The database user running this CI-only test must be allowed to create and
-drop databases.
+installment commitments, plus idempotent encrypted account/transaction imports, exact dual-currency
+round trips, provider deletion/reappearance, and user-state isolation. The database user running
+this CI-only test must be allowed to create and drop databases.
 
 PF-015 replaces PF-014's temporary null-only series guard with composite workspace foreign keys to
 the installment and recurring parents.
 
 Provider raw objects and webhook bodies are stored only as versioned encrypted envelopes. The
-encryption service implements ADR 0007, but no provider repository writes those envelopes until the
-subsequent import tickets.
+encryption service and account/transaction import repositories implement ADR 0007 with active-key
+writes and context-bound evidence; normalized account storage retains only masked number suffixes.
 
 Drizzle `0.45.x` currently has third-party declaration errors under TypeScript 6 when dependency
 declarations are checked directly. This package therefore enables `skipLibCheck` locally while all

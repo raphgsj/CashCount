@@ -46,8 +46,11 @@ record; the versioned implementation plan is the canonical specification.
 - PF-032 adds workspace-scoped account import with locked connection revalidation, encrypted and
   hash-deduplicated raw evidence, exact normalized values, masking-only identifiers, and idempotent
   upserts.
-- The next ticket is PF-033, which adds transaction import. Do not imply that bill import, queue
-  worker behavior, product
+- PF-033 adds bounded V2 cursor exhaustion, encrypted and hash-deduplicated transaction evidence,
+  exact signed dual-currency/local-date persistence, scoped bill references, provider-ID lifecycle
+  revisions, conservative duplicate review, coverage updates, and sync counters while never writing
+  transaction user state.
+- The next ticket is PF-034, which adds bill import. Do not imply that queue worker behavior, product
   authentication, rule evaluation, analytics services, general repositories, or product UI exist.
 - ADRs 0008, 0009, and 0010 define mandatory credential, workspace, provider-identity, signed-amount,
   and bill-reconciliation behavior for subsequent tickets.
