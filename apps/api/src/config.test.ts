@@ -11,6 +11,7 @@ function validApiEnvironment(): Record<string, string | undefined> {
   return {
     NODE_ENV: 'production',
     APP_TIMEZONE: 'America/Sao_Paulo',
+    API_WORKSPACE_ID: '10000000-0000-4000-8000-000000000001',
     DEFAULT_CURRENCY: 'BRL',
     DATABASE_URL: 'postgresql://cashcount:cashcount@database.internal:5432/cashcount',
     DATA_ENCRYPTION_ACTIVE_KEY_VERSION: '2',
@@ -35,6 +36,7 @@ describe('API environment', () => {
     expect(config.NODE_ENV).toBe('production');
     expect(config.DATA_ENCRYPTION_ACTIVE_KEY_VERSION).toBe(2);
     expect(config.DATA_ENCRYPTION_KEYRING_JSON.get(2)).toHaveLength(32);
+    expect(config.API_WORKSPACE_ID).toBe('10000000-0000-4000-8000-000000000001');
   });
 
   it('names a missing production database variable', () => {
@@ -49,6 +51,13 @@ describe('API environment', () => {
     environment['LOCAL_DATABASE_URL'] = environment['DATABASE_URL'];
 
     expect(() => parseApiConfig(environment)).toThrowError(/LOCAL_DATABASE_URL/);
+  });
+
+  it('requires a canonical server-bound API workspace', () => {
+    const environment = validApiEnvironment();
+    environment['API_WORKSPACE_ID'] = 'caller-selected';
+
+    expect(() => parseApiConfig(environment)).toThrowError(/API_WORKSPACE_ID/u);
   });
 
   it('rejects trust-boundary credential reuse without exposing the value', () => {

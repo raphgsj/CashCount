@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { encryptionKeyringSchema } from './keyring.js';
 import {
   booleanStringSchema,
+  canonicalUuidSchema,
   currencySchema,
   highEntropyTokenSchema,
   httpUrlSchema,
@@ -122,6 +123,7 @@ function validateDistinctCredentials(
 export const apiEnvironmentSchema = z
   .object({
     ...backendFields,
+    API_WORKSPACE_ID: canonicalUuidSchema,
     PLUGGY_WEBHOOK_SECRET: highEntropyTokenSchema,
     WEB_TO_API_TOKEN: highEntropyTokenSchema,
     MCP_TO_API_READONLY_TOKEN: highEntropyTokenSchema,

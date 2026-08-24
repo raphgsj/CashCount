@@ -12,7 +12,8 @@ const actionableStatuses = new Set([
 type ActionableStatus =
   'PROVIDER_ERROR' | 'REAUTH_REQUIRED' | 'USER_ACTION_REQUIRED' | 'USER_INPUT_REQUIRED';
 
-type TargetOutcome = 'ACTION_REQUIRED' | 'DELETED' | 'RECONCILED' | 'SKIPPED';
+export type ConnectionReconciliationOutcome =
+  'ACTION_REQUIRED' | 'DELETED' | 'RECONCILED' | 'SKIPPED';
 
 const workspaceIdPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
@@ -53,6 +54,7 @@ export interface ScheduledReconciliationOptions {
   pollIntervalMs?: number;
   provider: Pick<PluggyDataClient, 'getConnection' | 'requestConnectionRefresh'>;
   reconciliationRunId: string;
+  signal?: AbortSignal;
   sleep?: (delayMs: number) => Promise<void>;
   workspaceId: string;
 }
@@ -61,6 +63,13 @@ export class ReconciliationPollingTimeoutError extends Error {
   public constructor() {
     super('Provider Item did not settle within the reconciliation polling bound.');
     this.name = 'ReconciliationPollingTimeoutError';
+  }
+}
+
+export class ReconciliationAbortedError extends Error {
+  public constructor() {
+    super('Connection reconciliation was interrupted.');
+    this.name = 'ReconciliationAbortedError';
   }
 }
 
@@ -102,6 +111,10 @@ function assertSnapshotIdentity(
   }
 }
 
+function abortIfRequested(options: ScheduledReconciliationOptions): void {
+  if (options.signal?.aborted === true) throw new ReconciliationAbortedError();
+}
+
 async function recordAction(
   options: ScheduledReconciliationOptions,
   target: ReconciliationConnectionTarget,
@@ -121,7 +134,7 @@ async function applyNonActiveSnapshot(
   options: ScheduledReconciliationOptions,
   target: ReconciliationConnectionTarget,
   snapshot: ProviderConnectionDto,
-): Promise<TargetOutcome> {
+): Promise<ConnectionReconciliationOutcome> {
   if (snapshot.localStatus === 'DELETED') {
     await options.persistence.markConnectionDeleted(
       target.workspaceId,
@@ -157,6 +170,7 @@ async function waitForSettledItem(
   sleep: (delayMs: number) => Promise<void>,
 ): Promise<ProviderConnectionDto | null> {
   for (let attempt = 1; attempt <= maxPollAttempts; attempt += 1) {
+    abortIfRequested(options);
     const snapshot = await getCurrent(options, target);
     if (snapshot === null || snapshot.localStatus !== 'SYNCING') return snapshot;
     if (attempt === maxPollAttempts) throw new ReconciliationPollingTimeoutError();
@@ -171,11 +185,15 @@ async function reconcileTarget(
   maxPollAttempts: number,
   pollIntervalMs: number,
   sleep: (delayMs: number) => Promise<void>,
-): Promise<TargetOutcome> {
+): Promise<ConnectionReconciliationOutcome> {
+  if (target.workspaceId !== options.workspaceId) {
+    throw new TypeError('Connection reconciliation target is outside the configured workspace.');
+  }
   return options.persistence.withConnectionLock(
     target.workspaceId,
     target.externalConnectionId,
     async () => {
+      abortIfRequested(options);
       if (
         !(await options.persistence.isConnectionEnabled(
           target.workspaceId,
@@ -189,6 +207,7 @@ async function reconcileTarget(
         target.providerConnectionId,
         options.now?.() ?? new Date(),
       );
+      abortIfRequested(options);
       const initial = await getCurrent(options, target);
       if (initial === null) {
         await options.persistence.markConnectionDeleted(
@@ -256,6 +275,7 @@ async function reconcileTarget(
       }
 
       await options.fullImport(target.workspaceId, target.providerConnectionId);
+      abortIfRequested(options);
       await options.persistence.markConnectionSuccessful(
         target.workspaceId,
         target.providerConnectionId,
@@ -281,6 +301,19 @@ async function reconcileTarget(
       return 'RECONCILED';
     },
   );
+}
+
+export async function runConnectionReconciliation(
+  options: ScheduledReconciliationOptions,
+  target: ReconciliationConnectionTarget,
+): Promise<ConnectionReconciliationOutcome> {
+  const maxPollAttempts = options.maxPollAttempts ?? defaultReconciliationMaxPollAttempts;
+  const pollIntervalMs = options.pollIntervalMs ?? defaultReconciliationPollIntervalMs;
+  requireBoundedInteger('maxPollAttempts', maxPollAttempts, 1, 10_000);
+  requireBoundedInteger('pollIntervalMs', pollIntervalMs, 1, 300_000);
+  const sleep =
+    options.sleep ?? ((delayMs: number) => new Promise((resolve) => setTimeout(resolve, delayMs)));
+  return reconcileTarget(options, target, maxPollAttempts, pollIntervalMs, sleep);
 }
 
 export async function runScheduledReconciliation(

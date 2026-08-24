@@ -91,6 +91,13 @@ export const currencySchema = z
   .string()
   .regex(/^[A-Z]{3}$/, 'must be a three-letter uppercase currency code');
 
+export const canonicalUuidSchema = z
+  .string()
+  .regex(
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u,
+    'must be a canonical UUID',
+  );
+
 export const booleanStringSchema = z
   .enum(['true', 'false'])
   .default('false')

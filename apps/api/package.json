@@ -14,7 +14,7 @@
     "build": "tsc -p tsconfig.json",
     "lint": "eslint src --max-warnings=0",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run src/config.test.ts src/pluggy-webhook-schema.test.ts src/webhook-auth.test.ts src/webhook-route.test.ts",
-    "test:integration": "vitest run src/webhook-route.integration.test.ts"
+    "test": "vitest run src/config.test.ts src/pluggy-webhook-schema.test.ts src/webhook-auth.test.ts src/web-owner-auth.test.ts src/sync-operational-route.test.ts src/webhook-route.test.ts",
+    "test:integration": "vitest run src/webhook-route.integration.test.ts src/sync-operational-route.integration.test.ts"
   }
 }

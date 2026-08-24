@@ -12,6 +12,10 @@
     "./webhook": {
       "types": "./dist/webhook.d.ts",
       "import": "./dist/webhook.js"
+    },
+    "./operational": {
+      "types": "./dist/operational.d.ts",
+      "import": "./dist/operational.js"
     }
   },
   "scripts": {

@@ -262,4 +262,14 @@ describe('scheduled reconciliation', () => {
     });
     expect(test.calls).not.toContain('full-import');
   });
+
+  it('rejects a repository target outside the configured workspace before connection locking', async () => {
+    const mismatched = { ...target(), workspaceId: '60000000-0000-4000-8000-000000000001' };
+    const test = harness([], [mismatched]);
+
+    await expect(runScheduledReconciliation(test.options)).resolves.toMatchObject({
+      connectionsFailed: 1,
+    });
+    expect(test.calls).not.toContain('connection-lock');
+  });
 });

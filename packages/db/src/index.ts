@@ -68,6 +68,14 @@ export {
   type ReconciliationConnectionTarget,
 } from './reconciliation-repository.js';
 export {
+  SyncOperationalRepository,
+  type ManualReconciliationRequest,
+  type OperationalDeadLetter,
+  type OperationalSyncRun,
+  type RetriedOperationalJob,
+  type RetryDeadLetterResult,
+} from './sync-operational-repository.js';
+export {
   TransactionImportInvariantError,
   TransactionImportRepository,
   type TransactionImportAccount,

@@ -4,6 +4,7 @@ import {
   PayloadEncryptionService,
   WebhookInboxRepository,
 } from '@cashcount/db/webhook';
+import { SyncOperationalRepository } from '@cashcount/db/operational';
 
 import { createApiServer } from './webhook-route.js';
 
@@ -24,6 +25,11 @@ const encryption = new PayloadEncryptionService({
 });
 const server = createApiServer({
   inbox: new WebhookInboxRepository(pool, encryption),
+  operational: {
+    repository: new SyncOperationalRepository(pool),
+    webToken: config.WEB_TO_API_TOKEN,
+    workspaceId: config.API_WORKSPACE_ID,
+  },
   webhookSecret: config.PLUGGY_WEBHOOK_SECRET,
 });
 

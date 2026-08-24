@@ -1,4 +1,5 @@
 import { Buffer } from 'node:buffer';
+import { randomUUID } from 'node:crypto';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 
 import {
@@ -9,6 +10,10 @@ import {
 
 import { pluggyWebhookPayloadSchema, type PluggyWebhookPayload } from './pluggy-webhook-schema.js';
 import { requirePluggyWebhookCredential } from './webhook-auth.js';
+import {
+  processSyncOperationalRequest,
+  type SyncOperationalRouteDependencies,
+} from './sync-operational-route.js';
 
 export const pluggyWebhookBodyLimitBytes = 256 * 1_024;
 
@@ -24,6 +29,7 @@ export interface PluggyWebhookRouteDependencies {
   inbox: WebhookInboxWriter;
   now?: () => Date;
   webhookSecret: string;
+  operational?: SyncOperationalRouteDependencies;
 }
 
 export interface WebhookRouteResult {
@@ -108,13 +114,15 @@ export async function readBoundedRequestBody(
 function writeJson(
   response: ServerResponse,
   status: number,
-  body: Readonly<Record<string, boolean | string>>,
+  body: unknown,
+  headers: Readonly<Record<string, string>> = {},
 ): void {
   const encoded = JSON.stringify(body);
   response.writeHead(status, {
     'cache-control': 'no-store',
     'content-length': Buffer.byteLength(encoded),
     'content-type': 'application/json; charset=utf-8',
+    ...headers,
   });
   response.end(encoded);
 }
@@ -126,7 +134,47 @@ function isJsonContentType(value: string | undefined): boolean {
 export function createApiServer(dependencies: PluggyWebhookRouteDependencies): Server {
   const limit = dependencies.bodyLimitBytes ?? pluggyWebhookBodyLimitBytes;
   return createServer(async (request, response) => {
-    const path = new URL(request.url ?? '/', 'http://cashcount.invalid').pathname;
+    const requestUrl = new URL(request.url ?? '/', 'http://cashcount.invalid');
+    const path = requestUrl.pathname;
+    if (dependencies.operational !== undefined && path.startsWith('/v1/')) {
+      const declaredLength = contentLength(request);
+      const hasBody =
+        request.headers['transfer-encoding'] !== undefined ||
+        (declaredLength !== null && !Number.isNaN(declaredLength) && declaredLength > 0);
+      try {
+        const operational = await processSyncOperationalRequest(
+          {
+            authorizationHeader: request.headers.authorization ?? null,
+            hasBody,
+            invalidContentLength: Number.isNaN(declaredLength),
+            method: request.method ?? '',
+            url: requestUrl,
+          },
+          dependencies.operational,
+        );
+        if (operational !== null) {
+          request.resume();
+          writeJson(response, operational.status, operational.body, operational.headers);
+          return;
+        }
+      } catch {
+        request.resume();
+        const requestId = randomUUID();
+        writeJson(
+          response,
+          500,
+          {
+            code: 'INTERNAL_ERROR',
+            requestId,
+            status: 500,
+            title: 'Internal server error',
+            type: 'https://cashcount.invalid/problems/internal-error',
+          },
+          { 'x-request-id': requestId },
+        );
+        return;
+      }
+    }
     if (path !== '/webhooks/pluggy') {
       writeJson(response, 404, { error: 'NOT_FOUND' });
       return;

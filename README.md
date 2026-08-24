@@ -5,7 +5,7 @@ owner's financial data through a provider adapter, preserves normalized history 
 and exposes deterministic analytics to an authenticated web application and a read-only MCP
 server.
 
-**Phases 0 through 3 are complete; Phase 4 is in progress through PF-044:**
+**Phases 0 through 3 are complete; Phase 4 is in progress through PF-045:**
 
 - **PF-001** established the monorepo and application/package foundations.
 - **PF-002** added validated application environments and production safety constraints.
@@ -99,17 +99,20 @@ server.
   PostgreSQL-backed overlap protection, the same per-connection exclusion used by webhook work,
   bounded provider refresh observation, full V2 repair import, and connection health/freshness
   updates.
+- **PF-045** added a fixed-workspace web-owner operational API for bounded sync-run and dead-letter
+  inspection, controlled supported-job retry, and deduplicated manual connection reconciliation;
+  the persistent worker now executes manual `SYNC_CONNECTION` jobs with audited `MANUAL` sync
+  provenance.
 
 PF-003 through PF-006 are architecture-documentation milestones; executable implementation now
 extends through Phase 2's database foundation, deterministic domain policy, validated provider
 adapter, complete synthetic fixture matrix, explicit lifecycle mapping, and PF-030's versioned
 encryption boundary plus controlled connection discovery and account, transaction, and bill import.
-The persistent worker currently claims only its implemented `PROCESS_WEBHOOK` job type; scheduled
-reconciliation is an independent terminating command, and the remaining queue job handlers are not
-yet registered. The repository
-intentionally contains no product authentication, rule evaluator, analytics service, general
-financial-data repositories, product UI, or production secrets. The next ticket is **PF-045: Sync
-operational API**.
+The persistent worker currently claims its implemented `PROCESS_WEBHOOK` and `SYNC_CONNECTION` job
+types; scheduled reconciliation remains an independent terminating command, and other future queue
+job handlers are not yet registered. The repository intentionally contains no product
+authentication, rule evaluator, analytics service, general financial-data repositories, product
+UI, or production secrets. The next ticket is **PF-046: Queue lease hardening**.
 
 The accepted decisions are indexed in [`docs/adr/`](docs/adr/README.md). In particular, ADRs 0008
 through 0010 are the implementation contracts for credential boundaries, workspace integrity, and
@@ -178,6 +181,13 @@ prove idempotence, verifies the migration journal, and removes the temporary dat
 Every application validates its environment at startup through `@cashcount/config`. Production
 rejects the local database fallback, rejects the development authentication bypass, and detects
 credential reuse wherever both trust-boundary values are visible to the process.
+
+The API binds `WEB_TO_API_TOKEN` server-side to the single canonical `API_WORKSPACE_ID`; callers
+cannot select a role or workspace. That web-owner credential alone may use `GET /v1/sync-runs`,
+`GET /v1/sync-runs/:id`, `GET /v1/jobs/dead-letter`, `POST /v1/jobs/:id/retry`, and
+`POST /v1/connections/:id/reconcile`. Lists are bounded to at most 100 rows, commands accept no
+body, responses include request metadata, and the webhook/MCP credentials cannot substitute for
+the web credential.
 
 ## Workspace
 

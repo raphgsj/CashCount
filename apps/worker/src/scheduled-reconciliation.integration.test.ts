@@ -29,6 +29,7 @@ import {
 import { describe, expect, it, vi } from 'vitest';
 
 import { runFullImport } from './full-import.js';
+import { createManualReconciliationHandler } from './manual-reconciliation-handler.js';
 import { runScheduledReconciliation } from './scheduled-reconciliation.js';
 
 function requireItemFixture(name: string): string {
@@ -214,6 +215,62 @@ describe('scheduled reconciliation regression', () => {
         expect(requests).toContain(`PATCH /items/${pluggyFixtureIds.connection}`);
         expect(requests).toContain('GET /v2/transactions');
         expect(requests).not.toContain('GET /transactions');
+
+        const manualRequests: string[] = [];
+        const manualProvider = fixtureProvider(manualRequests);
+        const manualHandler = createManualReconciliationHandler({
+          applyConnectionSnapshot: async (scope, connectionId, snapshot) => {
+            const assigned = await connectionPersistence.assignDiscoveredConnections(scope, [
+              snapshot,
+            ]);
+            expect(assigned[0]?.id).toBe(connectionId);
+          },
+          fullImport: async (scope, connectionId) =>
+            runFullImport({
+              accountPersistence,
+              billPersistence,
+              encryption,
+              now: () => completedAt,
+              provider: manualProvider,
+              providerConnectionId: connectionId,
+              replacementDetector,
+              transactionPersistence,
+              triggerType: 'MANUAL',
+              workspaceId: scope,
+            }),
+          maxPollAttempts: 3,
+          now: () => completedAt,
+          persistence,
+          pollIntervalMs: 1,
+          provider: manualProvider,
+          sleep: async () => undefined,
+        });
+        await manualHandler(
+          {
+            attemptCount: 1,
+            availableAt: completedAt,
+            dedupeKey: `manual-reconcile:${providerConnectionId}`,
+            heartbeatAt: completedAt,
+            id: '43000000-0000-4000-8000-000000000045',
+            jobType: 'SYNC_CONNECTION',
+            leaseExpiresAt: new Date('2026-08-24T12:02:00.000Z'),
+            maxAttempts: 8,
+            payload: { providerConnectionId },
+            priority: 100,
+            startedAt: completedAt,
+            status: 'RUNNING',
+            workspaceId,
+          },
+          { signal: new AbortController().signal, workerId: 'synthetic-integration-worker' },
+        );
+        const manualRuns = await client.pool.query<{ count: number }>(
+          `select count(*)::integer as count from sync_run
+           where workspace_id = $1 and provider_connection_id = $2
+             and trigger_type = 'MANUAL' and status = 'SUCCEEDED'`,
+          [workspaceId, providerConnectionId],
+        );
+        expect(manualRuns.rows[0]?.count).toBe(1);
+        expect(manualRequests).toContain('GET /v2/transactions');
       } finally {
         await client.pool.end();
       }

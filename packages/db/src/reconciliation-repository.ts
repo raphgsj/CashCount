@@ -69,6 +69,29 @@ export class ReconciliationRepository {
     }));
   }
 
+  public async getEnabledConnection(
+    workspaceId: string,
+    providerConnectionId: string,
+  ): Promise<ReconciliationConnectionTarget | null> {
+    const result = await this.pool.query<TargetRow>(
+      `select id, workspace_id, external_connection_id, local_status
+       from provider_connection
+       where workspace_id = $1 and id = $2 and provider = 'PLUGGY'
+         and deleted_at is null and local_status not in ('DELETED', 'DISABLED')
+       limit 1`,
+      [workspaceId, providerConnectionId],
+    );
+    const row = result.rows[0];
+    return row === undefined
+      ? null
+      : {
+          externalConnectionId: row.external_connection_id,
+          localStatus: row.local_status,
+          providerConnectionId: row.id,
+          workspaceId: row.workspace_id,
+        };
+  }
+
   public async isConnectionEnabled(
     workspaceId: string,
     providerConnectionId: string,

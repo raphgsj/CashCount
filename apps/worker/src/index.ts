@@ -9,6 +9,7 @@ import {
   JobQueueRepository,
   PayloadEncryptionService,
   ProviderConnectionRepository,
+  ReconciliationRepository,
   TransactionImportRepository,
   TransactionReplacementRepository,
   WebhookProcessingRepository,
@@ -20,6 +21,7 @@ import {
 } from '@cashcount/provider-pluggy';
 
 import { runFullImport } from './full-import.js';
+import { createManualReconciliationHandler } from './manual-reconciliation-handler.js';
 import { PersistentQueueWorker } from './queue-worker.js';
 import { createPluggyWebhookHandler } from './webhook-event-handler.js';
 import { runUntilTermination } from './worker-process.js';
@@ -50,6 +52,7 @@ const accountPersistence = new AccountImportRepository(databaseClient.database);
 const billPersistence = new BillImportRepository(databaseClient.database);
 const connectionPersistence = new ProviderConnectionRepository(databaseClient.database);
 const replacementDetector = new TransactionReplacementRepository(databaseClient.pool);
+const reconciliationPersistence = new ReconciliationRepository(databaseClient.pool);
 const transactionPersistence = new TransactionImportRepository(databaseClient.database);
 const webhookPersistence = new WebhookProcessingRepository(databaseClient.pool);
 const processWebhook = createPluggyWebhookHandler({
@@ -80,14 +83,38 @@ const processWebhook = createPluggyWebhookHandler({
   transactionPersistence,
   webhookPersistence,
 });
+const reconcileConnection = createManualReconciliationHandler({
+  applyConnectionSnapshot: async (workspaceId, providerConnectionId, snapshot) => {
+    const assigned = await connectionPersistence.assignDiscoveredConnections(workspaceId, [
+      snapshot,
+    ]);
+    if (assigned.length !== 1 || assigned[0]?.id !== providerConnectionId) {
+      throw new Error('Provider Item snapshot resolved outside its manual reconciliation mapping.');
+    }
+  },
+  fullImport: async (workspaceId, providerConnectionId) =>
+    runFullImport({
+      accountPersistence,
+      billPersistence,
+      encryption,
+      provider,
+      providerConnectionId,
+      replacementDetector,
+      transactionPersistence,
+      triggerType: 'MANUAL',
+      workspaceId,
+    }),
+  persistence: reconciliationPersistence,
+  provider,
+});
 const worker = new PersistentQueueWorker({
-  handlers: { PROCESS_WEBHOOK: processWebhook },
+  handlers: { PROCESS_WEBHOOK: processWebhook, SYNC_CONNECTION: reconcileConnection },
   onOperationalEvent: (event) => console.error(JSON.stringify(event)),
   queue: new JobQueueRepository(databaseClient.pool),
   workerId: `${hostname()}:${process.pid}:${randomUUID()}`,
 });
 
-console.log(`${applicationName} started; registered_job_types=1`);
+console.log(`${applicationName} started; registered_job_types=2`);
 try {
   await runUntilTermination(worker);
 } finally {
