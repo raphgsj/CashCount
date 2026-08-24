@@ -45,3 +45,15 @@ export {
   type ClassificationRuleOperator,
   type ClassificationRulePredicate,
 } from './rule-dsl.js';
+export {
+  classificationRuleEvaluationPolicyVersion,
+  evaluateClassificationRules,
+  type AppliedClassificationRuleActions,
+  type AppliedRuleValue,
+  type ClassificationRuleConflict,
+  type ClassificationRuleConflictField,
+  type ClassificationRuleEvaluationResult,
+  type ClassificationRuleFacts,
+  type EvaluatableClassificationRule,
+  type MatchedClassificationRule,
+} from './rule-evaluator.js';

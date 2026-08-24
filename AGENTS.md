@@ -97,9 +97,14 @@ record; the versioned implementation plan is the canonical specification.
   vocabulary. It uses string-only decimals, bounded trees/lists/text/patterns, field-aware values,
   non-conflicting actions, and Google RE2-WASM for linear-time user-authored regular expressions;
   arbitrary code and JavaScript regular expressions are not accepted.
-- The next ticket is PF-053, which adds deterministic rule evaluation, conflict reporting, and hit
-  counts. Do not imply that analytics services, product authentication, general repositories, or
-  product UI exist.
+- PF-053 adds deterministic priority/creation/ID rule evaluation, explicit lower-precedence and tag
+  conflict reporting, stop semantics, workspace-validated rule writes, selected decisions, system
+  field/tag application, and fingerprint-idempotent hit counts under concurrent retry. Invalid
+  stored DSL fails closed, suggestions remain inactive, and an append-only database guard enforces
+  the versioned `SET_CATEGORY` workspace invariant even when SQL bypasses the repository.
+- The next ticket is PF-054, which adds manual override behavior and explicit future-rule
+  suggestions. Do not imply that analytics services, product authentication, general repositories,
+  or product UI exist.
 - ADRs 0008, 0009, and 0010 define mandatory credential, workspace, provider-identity, signed-amount,
   and bill-reconciliation behavior for subsequent tickets.
 - Update this section and the root README together whenever a PF ticket or phase is completed.

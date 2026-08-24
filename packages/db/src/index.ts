@@ -21,6 +21,15 @@ export {
 } from './bill-import-repository.js';
 export { createDatabaseClient, type DatabaseClient } from './client.js';
 export {
+  ClassificationRuleInvariantError,
+  ClassificationRuleRepository,
+  ClassificationTransactionNotFoundError,
+  type ClassificationRuleRecord,
+  type ClassificationRuleSource,
+  type CreateClassificationRuleInput,
+  type PersistedRuleEvaluationResult,
+} from './classification-rule-repository.js';
+export {
   defaultQueueHeartbeatMs,
   defaultQueueLeaseMs,
   JobQueueRepository,

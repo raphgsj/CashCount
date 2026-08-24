@@ -119,6 +119,11 @@ server.
   collections, text, regex patterns, and inputs; duplicate-action rejection; and Google RE2-WASM
   compilation for linear-time user-authored patterns. It accepts neither arbitrary code nor native
   JavaScript regular expressions.
+- **PF-053** added deterministic priority/creation/ID rule evaluation with explicit conflict and
+  stop reporting, workspace-validated rule creation, inactive-until-confirmed suggestions, selected
+  decision persistence, system field/tag application, and fingerprint-idempotent hit counts under
+  concurrent retry. Invalid stored DSL fails closed, and an append-only database guard validates
+  versioned `SET_CATEGORY` actions against global or same-workspace active categories.
 
 PF-003 through PF-006 are architecture-documentation milestones; executable implementation now
 extends through Phase 2's database foundation, deterministic domain policy, validated provider
@@ -127,8 +132,8 @@ encryption boundary plus controlled connection discovery and account, transactio
 The persistent worker currently claims its implemented `PROCESS_WEBHOOK` and `SYNC_CONNECTION` job
 types; scheduled reconciliation remains an independent terminating command, and other future queue
 job handlers are not yet registered. The repository intentionally contains no product
-authentication, rule evaluator, analytics service, general financial-data repositories, product
-UI, or production secrets. The next ticket is **PF-053: Rule evaluator**.
+authentication, analytics service, general financial-data repositories, product UI, or production
+secrets. The next ticket is **PF-054: Manual override behavior**.
 
 The accepted decisions are indexed in [`docs/adr/`](docs/adr/README.md). In particular, ADRs 0008
 through 0010 are the implementation contracts for credential boundaries, workspace integrity, and

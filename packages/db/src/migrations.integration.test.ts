@@ -190,7 +190,7 @@ describe('database migrations', () => {
             client,
             'select count(*)::integer as count from drizzle.__drizzle_migrations',
           ),
-        ).toBe(10);
+        ).toBe(11);
         expect(
           await queryCount(
             client,
@@ -3274,7 +3274,7 @@ describe('database migrations', () => {
                 afterUpgradeClient,
                 'select count(*)::integer as count from drizzle.__drizzle_migrations',
               ),
-            ).toBe(10);
+            ).toBe(11);
             expect(
               await queryCount(
                 afterUpgradeClient,
