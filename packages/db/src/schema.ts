@@ -1498,7 +1498,7 @@ export const classificationDecision = pgTable(
       .onUpdate('restrict'),
     check(
       'classification_decision_source_ck',
-      sql`${table.source} in ('RULE', 'MERCHANT', 'PROVIDER', 'MODEL', 'USER')`,
+      sql`${table.source} in ('RULE', 'MERCHANT', 'HEURISTIC', 'PROVIDER', 'MODEL', 'USER')`,
     ),
     check(
       'classification_decision_source_reference_nonempty_ck',

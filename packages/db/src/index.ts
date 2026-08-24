@@ -21,6 +21,13 @@ export {
 } from './bill-import-repository.js';
 export { createDatabaseClient, type DatabaseClient } from './client.js';
 export {
+  FinancialRoleDetectionInvariantError,
+  FinancialRoleDetectionRepository,
+  type FinancialRoleDetectionKind,
+  type FinancialRoleDetectionResult,
+  type FinancialRoleDetectionStatus,
+} from './financial-role-detection-repository.js';
+export {
   ClassificationRuleInvariantError,
   ClassificationRuleRepository,
   ClassificationTransactionNotFoundError,

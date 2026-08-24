@@ -106,7 +106,11 @@ record; the versioned implementation plan is the canonical specification.
   existing optimistic `SET`, `CLEAR`, and `INHERIT` state operations without creating rules, while
   future application creates a visible inactive description/merchant rule suggestion. A separate,
   audited, workspace-scoped confirmation is the only activation path and is retry-idempotent.
-- The next ticket is PF-055, which adds conservative transfer, bill-payment, and refund detectors.
+- PF-055 adds conservative versioned financial-role detection: bill payments require normalized
+  child/reconciliation evidence, transfers require unique reciprocal cross-account evidence, and
+  refunds require explicit text plus a unique prior purchase. Results are fingerprint-idempotent,
+  ambiguous matches remain review-only, occupied pairs are immutable, and user state is untouched.
+- The next ticket is PF-056, which adds the classification quality report.
   Do not imply that analytics services, product authentication, general repositories, or product UI
   exist.
 - ADRs 0008, 0009, and 0010 define mandatory credential, workspace, provider-identity, signed-amount,

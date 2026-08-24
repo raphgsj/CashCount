@@ -1,0 +1,2 @@
+ALTER TABLE "classification_decision" DROP CONSTRAINT "classification_decision_source_ck";--> statement-breakpoint
+ALTER TABLE "classification_decision" ADD CONSTRAINT "classification_decision_source_ck" CHECK ("classification_decision"."source" in ('RULE', 'MERCHANT', 'HEURISTIC', 'PROVIDER', 'MODEL', 'USER'));

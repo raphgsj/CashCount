@@ -5,7 +5,7 @@ owner's financial data through a provider adapter, preserves normalized history 
 and exposes deterministic analytics to an authenticated web application and a read-only MCP
 server.
 
-**Phases 0 through 4 are complete; Phase 5 is in progress through PF-051:**
+**Phases 0 through 4 are complete; Phase 5 is in progress through PF-055:**
 
 - **PF-001** established the monorepo and application/package foundations.
 - **PF-002** added validated application environments and production safety constraints.
@@ -128,6 +128,11 @@ server.
   Transaction-only corrections preserve optimistic `SET`, `CLEAR`, and `INHERIT` behavior without
   creating a rule; future application creates a visible inactive description/merchant suggestion,
   and only a separate audited, workspace-scoped, retry-idempotent confirmation activates it.
+- **PF-055** added conservative, versioned bill-payment, internal-transfer, and refund detection.
+  Bill-payment roles require normalized child/reconciliation evidence; transfers require a unique
+  reciprocal cross-account match; refunds require explicit text plus a unique prior purchase. Every
+  automatic or ambiguous result is fingerprinted, ambiguity remains review-only, occupied transfer
+  pairs cannot be reused, and user state is never written.
 
 PF-003 through PF-006 are architecture-documentation milestones; executable implementation now
 extends through Phase 2's database foundation, deterministic domain policy, validated provider
@@ -137,7 +142,7 @@ The persistent worker currently claims its implemented `PROCESS_WEBHOOK` and `SY
 types; scheduled reconciliation remains an independent terminating command, and other future queue
 job handlers are not yet registered. The repository intentionally contains no product
 authentication, analytics service, general financial-data repositories, product UI, or production
-secrets. The next ticket is **PF-055: Transfer/bill-payment/refund detectors**.
+secrets. The next ticket is **PF-056: Classification quality report**.
 
 The accepted decisions are indexed in [`docs/adr/`](docs/adr/README.md). In particular, ADRs 0008
 through 0010 are the implementation contracts for credential boundaries, workspace integrity, and

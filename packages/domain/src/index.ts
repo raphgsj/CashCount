@@ -18,6 +18,19 @@ export {
   type IanaTimezone,
 } from './dates.js';
 export {
+  detectBillPaymentRole,
+  detectInternalTransfer,
+  detectRefund,
+  financialRoleDetectionPolicyVersion,
+  refundDetectionDateWindowDays,
+  transferDetectionDateWindowDays,
+  type BillPaymentDetectionResult,
+  type BillPaymentEvidence,
+  type DetectionCandidate,
+  type FinancialRoleDetectionFacts,
+  type PairDetectionResult,
+} from './financial-role-detectors.js';
+export {
   createSignedAmountEvidence,
   InvalidCurrencyCodeError,
   InvalidDecimalStringError,
