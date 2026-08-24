@@ -62,9 +62,12 @@ record; the versioned implementation plan is the canonical specification.
 - PF-037 completes Phase 3 with versioned deterministic replacement scoring, same-sync eligibility,
   ambiguity-aware review links, explicit confirmation/rejection, and idempotent conflict-safe
   transfer of user state/tags with revision and audit evidence.
-- The next ticket is PF-040, which adds the webhook ingestion route. Do not imply that a durable
-  worker process, product authentication, rule evaluation, analytics services, general repositories,
-  or product UI exist.
+- PF-040 starts Phase 4 with an isolated constant-time webhook guard, bounded streaming JSON,
+  official first-wave schemas, encrypted mapped/unmapped transactional inbox persistence, and one
+  internal-ID-only job per event while keeping provider calls off the response path.
+- The next ticket is PF-041, which adds the queue repository. Do not imply that a durable worker
+  process, product authentication, rule evaluation, analytics services, general repositories, or
+  product UI exist.
 - ADRs 0008, 0009, and 0010 define mandatory credential, workspace, provider-identity, signed-amount,
   and bill-reconciliation behavior for subsequent tickets.
 - Update this section and the root README together whenever a PF ticket or phase is completed.

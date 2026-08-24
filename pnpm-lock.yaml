@@ -41,6 +41,12 @@ importers:
       '@cashcount/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@cashcount/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      zod:
+        specifier: 4.4.3
+        version: 4.4.3
 
   apps/mcp:
     dependencies:

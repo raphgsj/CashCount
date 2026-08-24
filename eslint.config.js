@@ -39,6 +39,7 @@ export default tseslint.config(
       'packages/db/src/seed-cli.ts',
       'packages/db/src/*.integration.test.ts',
       'apps/*/src/index.ts',
+      'apps/api/src/*.integration.test.ts',
       'apps/worker/src/discover-cli.ts',
       'apps/worker/src/full-import-cli.ts',
       'apps/worker/src/*.integration.test.ts',

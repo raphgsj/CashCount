@@ -72,6 +72,13 @@ export {
   type UserStateActorType,
 } from './transaction-user-state-repository.js';
 export {
+  authenticatedWebhookIngestionCapability,
+  WebhookInboxRepository,
+  type AuthenticatedWebhookIngestionCapability,
+  type PluggyWebhookInboxInput,
+  type PluggyWebhookInboxResult,
+} from './webhook-inbox-repository.js';
+export {
   appUser,
   auditEvent,
   billPaymentReconciliation,

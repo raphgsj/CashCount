@@ -46,6 +46,10 @@ PF-037 adds same-sync provider-replacement candidates under a versioned determin
 retains both provider rows, auto-confirms only unique high-confidence matches, keeps weak/competing
 matches reviewable, and transfers user state/tags only into an empty successor while recording one
 idempotent revision and audit event.
+PF-040 adds a deliberately narrow authenticated-webhook capability. It resolves workspace scope only
+when stored Item/account identities select one relationship, encrypts every mapped or unmapped
+payload with context-bound active-key evidence, and atomically inserts one `PROCESS_WEBHOOK` job
+whose payload contains only the internal inbox ID. General queue operations remain PF-041 work.
 
 From the repository root:
 
