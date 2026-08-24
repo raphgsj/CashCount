@@ -35,7 +35,8 @@ export class ProviderConnectionRepository {
       const assigned: AssignedProviderConnection[] = [];
       for (const connection of connections) {
         const retainedLocalStatus: SQL<string> = sql`case
-          when ${providerConnection.localStatus} = 'DISABLED' then 'DISABLED'
+          when ${providerConnection.localStatus} in ('DISABLED', 'DELETED')
+            then ${providerConnection.localStatus}
           else excluded.local_status
         end`;
         const rows = await transaction

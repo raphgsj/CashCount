@@ -6,6 +6,7 @@
   "dependencies": {
     "@cashcount/config": "workspace:*",
     "@cashcount/db": "workspace:*",
+    "@cashcount/provider-pluggy": "workspace:*",
     "zod": "4.4.3"
   },
   "scripts": {

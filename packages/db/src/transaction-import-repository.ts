@@ -1,7 +1,7 @@
 import { Buffer } from 'node:buffer';
 import { createHash, randomUUID } from 'node:crypto';
 
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 
 import {
@@ -212,6 +212,195 @@ export class TransactionImportRepository {
           ),
         );
       return { accounts, syncRunId };
+    });
+  }
+
+  public async startWebhookSync(
+    workspaceId: string,
+    providerConnectionId: string,
+    externalAccountId: string,
+    startedAt = new Date(),
+  ): Promise<TransactionSyncStart> {
+    return this.database.transaction(async (transaction) => {
+      const connections = await transaction
+        .select({ localStatus: providerConnection.localStatus })
+        .from(providerConnection)
+        .where(
+          and(
+            eq(providerConnection.workspaceId, workspaceId),
+            eq(providerConnection.id, providerConnectionId),
+            eq(providerConnection.provider, 'PLUGGY'),
+          ),
+        )
+        .limit(1)
+        .for('update');
+      const connection = connections[0];
+      if (
+        connection === undefined ||
+        connection.localStatus === 'DELETED' ||
+        connection.localStatus === 'DISABLED'
+      ) {
+        throw new TransactionImportInvariantError('Transaction sync target is unavailable.');
+      }
+      const rows = await transaction
+        .select({
+          accountCurrency: financialAccount.currency,
+          accountType: financialAccount.accountType,
+          externalAccountId: financialAccount.externalAccountId,
+          financialAccountId: financialAccount.id,
+        })
+        .from(financialAccount)
+        .where(
+          and(
+            eq(financialAccount.workspaceId, workspaceId),
+            eq(financialAccount.providerConnectionId, providerConnectionId),
+            eq(financialAccount.provider, 'PLUGGY'),
+            eq(financialAccount.externalAccountId, externalAccountId),
+            eq(financialAccount.isActive, true),
+          ),
+        )
+        .limit(1);
+      const row = rows[0];
+      if (row === undefined || !isAccountType(row.accountType)) {
+        throw new TransactionImportInvariantError('Webhook transaction account is unavailable.');
+      }
+      const account: TransactionImportAccount = { ...row, accountType: row.accountType };
+      const syncRunId = randomUUID();
+      await transaction.insert(syncRun).values({
+        accountsSeen: 1,
+        id: syncRunId,
+        providerConnectionId,
+        startedAt,
+        triggerType: 'WEBHOOK',
+        workspaceId,
+      });
+      await transaction
+        .update(providerConnection)
+        .set({ lastAttemptAt: startedAt, updatedAt: startedAt })
+        .where(
+          and(
+            eq(providerConnection.workspaceId, workspaceId),
+            eq(providerConnection.id, providerConnectionId),
+          ),
+        );
+      return { accounts: [account], syncRunId };
+    });
+  }
+
+  public async deleteWebhookTransactions(
+    workspaceId: string,
+    syncRunId: string,
+    account: TransactionImportAccount,
+    externalTransactionIds: readonly string[],
+    deletedAt = new Date(),
+  ): Promise<number> {
+    if (externalTransactionIds.length === 0 || externalTransactionIds.length > 1_000) {
+      throw new TransactionImportInvariantError(
+        'Webhook deletion must contain 1 to 1000 transaction identifiers.',
+      );
+    }
+    if (new Set(externalTransactionIds).size !== externalTransactionIds.length) {
+      throw new TransactionImportInvariantError(
+        'Webhook deletion contains duplicate transaction identifiers.',
+      );
+    }
+
+    return this.database.transaction(async (transaction) => {
+      const runs = await transaction
+        .select({ providerConnectionId: syncRun.providerConnectionId })
+        .from(syncRun)
+        .where(
+          and(
+            eq(syncRun.workspaceId, workspaceId),
+            eq(syncRun.id, syncRunId),
+            eq(syncRun.status, 'RUNNING'),
+          ),
+        )
+        .limit(1)
+        .for('update');
+      const run = runs[0];
+      if (run === undefined) {
+        throw new TransactionImportInvariantError('Transaction sync run is unavailable.');
+      }
+      const accountRows = await transaction
+        .select({ externalAccountId: financialAccount.externalAccountId })
+        .from(financialAccount)
+        .where(
+          and(
+            eq(financialAccount.workspaceId, workspaceId),
+            eq(financialAccount.id, account.financialAccountId),
+            eq(financialAccount.providerConnectionId, run.providerConnectionId),
+            eq(financialAccount.provider, 'PLUGGY'),
+          ),
+        )
+        .limit(1)
+        .for('update');
+      if (accountRows[0]?.externalAccountId !== account.externalAccountId) {
+        throw new TransactionImportInvariantError('Transaction import account is unavailable.');
+      }
+
+      const existing = await transaction
+        .select({
+          deletedAt: financialTransaction.deletedAt,
+          id: financialTransaction.id,
+          providerTransactionId: financialTransaction.providerTransactionId,
+          status: financialTransaction.status,
+        })
+        .from(financialTransaction)
+        .where(
+          and(
+            eq(financialTransaction.workspaceId, workspaceId),
+            eq(financialTransaction.financialAccountId, account.financialAccountId),
+            eq(financialTransaction.provider, 'PLUGGY'),
+            inArray(financialTransaction.providerTransactionId, [...externalTransactionIds]),
+          ),
+        )
+        .for('update');
+      let deleted = 0;
+      for (const item of existing) {
+        if (item.status === 'DELETED') continue;
+        await transaction
+          .update(financialTransaction)
+          .set({ deletedAt, status: 'DELETED', updatedAt: deletedAt })
+          .where(
+            and(
+              eq(financialTransaction.workspaceId, workspaceId),
+              eq(financialTransaction.id, item.id),
+            ),
+          );
+        await transaction.insert(transactionRevision).values({
+          actorType: 'WORKER',
+          changeType: 'DELETE',
+          changedFields: {
+            changes: [
+              {
+                field: 'deletedAt',
+                from: item.deletedAt?.toISOString() ?? null,
+                to: deletedAt.toISOString(),
+              },
+              { field: 'status', from: item.status, to: 'DELETED' },
+            ],
+          },
+          createdAt: deletedAt,
+          financialTransactionId: item.id,
+          workspaceId,
+        });
+        deleted += 1;
+      }
+      await transaction
+        .update(syncRun)
+        .set({
+          transactionsDeleted: sql`${syncRun.transactionsDeleted} + ${deleted}`,
+          transactionsSeen: sql`${syncRun.transactionsSeen} + ${externalTransactionIds.length}`,
+        })
+        .where(
+          and(
+            eq(syncRun.workspaceId, workspaceId),
+            eq(syncRun.id, syncRunId),
+            eq(syncRun.status, 'RUNNING'),
+          ),
+        );
+      return deleted;
     });
   }
 

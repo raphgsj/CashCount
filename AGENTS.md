@@ -70,9 +70,14 @@ record; the versioned implementation plan is the canonical specification.
   bounded retries, dead-lettering, and stale-lease reclamation under concurrent workers.
 - PF-042 adds the persistent worker runtime with registered-type-only claims, bounded concurrency,
   lease heartbeats, stale-lock recovery, redacted failure disposition, signal-driven claim shutdown,
-  in-flight draining, and PostgreSQL pool release. No handlers are registered yet.
-- The next ticket is PF-043, which adds event handlers. Do not imply that product authentication,
-  rule evaluation, analytics services, general repositories, or product UI exist.
+  in-flight draining, and PostgreSQL pool release. At that ticket boundary no handlers were
+  registered.
+- PF-043 adds encrypted inbox processing and registered Pluggy lifecycle/transaction handlers with
+  current-Item reads, post-import ACTIVE transitions, owner-action audit evidence, V2-only created,
+  updated, and deleted transaction processing, scoped soft deletion/revisions, and replacement
+  detection. Deleted connections preserve history and terminate pending refresh work.
+- The next ticket is PF-044, which adds scheduled reconciliation. Do not imply that product
+  authentication, rule evaluation, analytics services, general repositories, or product UI exist.
 - ADRs 0008, 0009, and 0010 define mandatory credential, workspace, provider-identity, signed-amount,
   and bill-reconciliation behavior for subsequent tickets.
 - Update this section and the root README together whenever a PF ticket or phase is completed.

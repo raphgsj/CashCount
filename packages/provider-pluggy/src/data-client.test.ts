@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   normalizePluggyCreatedTransactionsHint,
+  pluggyTransactionIdsInput,
   PluggyApiKeyProvider,
   PluggyAuthenticatedHttpClient,
   PluggyDataClient,
@@ -341,6 +342,18 @@ describe('legacy webhook normalization', () => {
     expect(result.cursor).toContain('createdAtFrom=2026-08-23T12%3A00%3A00.000Z');
   });
 
+  it('accepts the documented post-migration createdTransactionsLink when it targets V2', () => {
+    const timestamp = '2026-08-23T12:00:00.000Z';
+    const result = normalizePluggyCreatedTransactionsHint({
+      accountId,
+      transactionsCreatedAtFrom: timestamp,
+      createdTransactionsLink: `https://api.pluggy.ai/v2/transactions?accountId=${accountId}&createdAtFrom=${timestamp}`,
+    });
+
+    expect(result.cursor).toContain(`accountId=${accountId}`);
+    expect(result.cursor).toContain('createdAtFrom=2026-08-23T12%3A00%3A00.000Z');
+  });
+
   it('rejects mismatched, foreign-origin, and malformed webhook evidence', () => {
     const timestamp = '2026-08-23T12:00:00.000Z';
     expect(() =>
@@ -357,5 +370,20 @@ describe('legacy webhook normalization', () => {
         createdTransactionsLink: `https://api.pluggy.ai/transactions?accountId=${itemId}&createdAtFrom=${timestamp}`,
       }),
     ).toThrow(/does not match/u);
+  });
+});
+
+describe('updated transaction webhook normalization', () => {
+  it('builds only a V2-compatible account and comma-separated ids cursor', () => {
+    const secondId = '77777777-7777-4777-8777-777777777777';
+    const result = pluggyTransactionIdsInput(accountId, [transactionId, secondId]);
+
+    expect(result.externalAccountId).toBe(accountId);
+    const query = new URLSearchParams(result.cursor?.slice(1));
+    expect(query.get('accountId')).toBe(accountId);
+    expect(query.get('ids')).toBe(`${transactionId},${secondId}`);
+    expect(() => pluggyTransactionIdsInput(accountId, [transactionId, transactionId])).toThrow(
+      /unique/u,
+    );
   });
 });

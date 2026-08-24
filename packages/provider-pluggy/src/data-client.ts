@@ -576,6 +576,25 @@ const createdWebhookHintSchema = z
 
 export type PluggyCreatedTransactionsHint = z.input<typeof createdWebhookHintSchema>;
 
+export function pluggyTransactionIdsInput(
+  accountId: string,
+  transactionIds: readonly string[],
+): ListTransactionsInput {
+  const parsedAccountId = idSchema.parse(accountId);
+  const parsedIds = z.array(idSchema).min(1).max(500).parse(transactionIds);
+  if (new Set(parsedIds).size !== parsedIds.length) {
+    throw new TypeError('Pluggy transaction identifiers must be unique.');
+  }
+  const query = new URLSearchParams({
+    accountId: parsedAccountId,
+    ids: parsedIds.join(','),
+  });
+  return listTransactionsInputSchema.parse({
+    externalAccountId: parsedAccountId,
+    cursor: `?${query.toString()}`,
+  });
+}
+
 export function normalizePluggyCreatedTransactionsHint(
   input: PluggyCreatedTransactionsHint,
   baseUrl = 'https://api.pluggy.ai',
@@ -583,9 +602,10 @@ export function normalizePluggyCreatedTransactionsHint(
   const hint = createdWebhookHintSchema.parse(input);
   const providerOrigin = new URL(baseUrl).origin;
   const source = new URL(hint.createdTransactionsLinkV2 ?? hint.createdTransactionsLink ?? '');
-  const expectedPath =
-    hint.createdTransactionsLinkV2 === undefined ? '/transactions' : '/v2/transactions';
-  if (source.origin !== providerOrigin || source.pathname !== expectedPath) {
+  const allowedPath =
+    source.pathname === '/v2/transactions' ||
+    (hint.createdTransactionsLinkV2 === undefined && source.pathname === '/transactions');
+  if (source.origin !== providerOrigin || !allowedPath) {
     throw new TypeError('Pluggy webhook transaction link has an unexpected origin or path.');
   }
   if (
@@ -602,7 +622,7 @@ export function normalizePluggyCreatedTransactionsHint(
     createdAtFrom: hint.transactionsCreatedAtFrom,
   });
   const after = source.searchParams.get('after');
-  if (expectedPath === '/v2/transactions' && after !== null && !after.includes('{')) {
+  if (source.pathname === '/v2/transactions' && after !== null && !after.includes('{')) {
     query.set('after', after);
   }
   return listTransactionsInputSchema.parse({

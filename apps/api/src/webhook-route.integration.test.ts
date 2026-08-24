@@ -138,11 +138,12 @@ describe('Pluggy webhook route integration', () => {
 
         const transactionPayload = {
           accountId: externalAccountId,
-          createdTransactionsLinkV2: `https://api.pluggy.ai/v2/transactions?accountId=${externalAccountId}`,
+          createdTransactionsLinkV2: `https://api.pluggy.ai/v2/transactions?accountId=${externalAccountId}&createdAtFrom=2026-08-24T11:00:00.000Z`,
           event: 'transactions/created',
           eventId: '60000000-0000-4000-8000-000000000003',
           itemId,
           transactionsCount: 1,
+          transactionsCreatedAtFrom: '2026-08-24T11:00:00.000Z',
         };
         await processPluggyWebhookBody(
           authorization,

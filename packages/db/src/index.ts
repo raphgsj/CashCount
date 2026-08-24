@@ -102,6 +102,13 @@ export {
   type PluggyWebhookInboxResult,
 } from './webhook-inbox-repository.js';
 export {
+  WebhookProcessingInvariantError,
+  WebhookProcessingRepository,
+  type WebhookConnectionTarget,
+  type WebhookProcessingEvent,
+  type WebhookProcessingStatus,
+} from './webhook-processing-repository.js';
+export {
   appUser,
   auditEvent,
   billPaymentReconciliation,

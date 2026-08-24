@@ -21,7 +21,8 @@ function fixture(event: (typeof supportedPluggyWebhookEvents)[number]): Record<s
     return {
       ...common,
       accountId: ids.account,
-      createdTransactionsLinkV2: `https://api.pluggy.ai/v2/transactions?accountId=${ids.account}`,
+      createdTransactionsLinkV2: `https://api.pluggy.ai/v2/transactions?accountId=${ids.account}&createdAtFrom=2026-08-23T12:00:00.000Z`,
+      transactionsCreatedAtFrom: '2026-08-23T12:00:00.000Z',
       transactionsCount: 1,
     };
   }
@@ -61,6 +62,10 @@ describe('Pluggy webhook payload schemas', () => {
     const created = fixture('transactions/created');
     delete created['createdTransactionsLinkV2'];
     expect(pluggyWebhookPayloadSchema.safeParse(created).success).toBe(false);
+
+    const missingTimestamp = fixture('transactions/created');
+    delete missingTimestamp['transactionsCreatedAtFrom'];
+    expect(pluggyWebhookPayloadSchema.safeParse(missingTimestamp).success).toBe(false);
 
     expect(
       pluggyWebhookPayloadSchema.safeParse({

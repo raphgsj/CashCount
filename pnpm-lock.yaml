@@ -44,6 +44,9 @@ importers:
       '@cashcount/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@cashcount/provider-pluggy':
+        specifier: workspace:*
+        version: link:../../packages/provider-pluggy
       zod:
         specifier: 4.4.3
         version: 4.4.3

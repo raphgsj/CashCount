@@ -13,11 +13,17 @@ export {
 } from './authenticated-http-client.js';
 export {
   normalizePluggyCreatedTransactionsHint,
+  pluggyTransactionIdsInput,
   PluggyDataClient,
   PluggyResponseValidationError,
   type PluggyCreatedTransactionsHint,
   type PluggyDataClientOptions,
 } from './data-client.js';
 export { mapPluggyItemLifecycle, type PluggyItemLifecycleInput } from './lifecycle-mapper.js';
+export {
+  pluggyWebhookPayloadSchema,
+  supportedPluggyWebhookEvents,
+  type PluggyWebhookPayload,
+} from './webhook-schema.js';
 
 export const packageName = '@cashcount/provider-pluggy' as const;
