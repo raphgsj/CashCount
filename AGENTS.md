@@ -102,9 +102,13 @@ record; the versioned implementation plan is the canonical specification.
   field/tag application, and fingerprint-idempotent hit counts under concurrent retry. Invalid
   stored DSL fails closed, suggestions remain inactive, and an append-only database guard enforces
   the versioned `SET_CATEGORY` workspace invariant even when SQL bypasses the repository.
-- The next ticket is PF-054, which adds manual override behavior and explicit future-rule
-  suggestions. Do not imply that analytics services, product authentication, general repositories,
-  or product UI exist.
+- PF-054 adds an explicit manual-correction application choice: transaction-only changes use the
+  existing optimistic `SET`, `CLEAR`, and `INHERIT` state operations without creating rules, while
+  future application creates a visible inactive description/merchant rule suggestion. A separate,
+  audited, workspace-scoped confirmation is the only activation path and is retry-idempotent.
+- The next ticket is PF-055, which adds conservative transfer, bill-payment, and refund detectors.
+  Do not imply that analytics services, product authentication, general repositories, or product UI
+  exist.
 - ADRs 0008, 0009, and 0010 define mandatory credential, workspace, provider-identity, signed-amount,
   and bill-reconciliation behavior for subsequent tickets.
 - Update this section and the root README together whenever a PF ticket or phase is completed.

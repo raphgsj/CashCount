@@ -1,5 +1,10 @@
 import type { Pool, PoolClient } from 'pg';
 
+import {
+  ClassificationRuleRepository,
+  type ClassificationRuleRecord,
+} from './classification-rule-repository.js';
+
 export const financialRoles = [
   'PURCHASE',
   'INCOME',
@@ -44,6 +49,30 @@ export interface UpdateTransactionUserStateInput {
   reviewStatus?: TransactionReviewStatus;
   transactionId: string;
   workspaceId: string;
+}
+
+export type ManualCorrectionApplication =
+  | { mode: 'TRANSACTION_ONLY' }
+  | {
+      basis: 'DESCRIPTION' | 'MERCHANT';
+      mode: 'SUGGEST_FUTURE_RULE';
+      name: string;
+      priority: number;
+    };
+
+export type ApplyManualCorrectionInput = Omit<
+  UpdateTransactionUserStateInput,
+  'actorId' | 'actorType'
+> & {
+  actorId: string;
+  actorType: 'USER';
+  application: ManualCorrectionApplication;
+};
+
+export interface AppliedManualCorrection {
+  applicationMode: ManualCorrectionApplication['mode'];
+  state: TransactionUserStateRecord;
+  suggestion: ClassificationRuleRecord | null;
 }
 
 export interface TransactionUserStateRecord {
@@ -381,6 +410,116 @@ export class TransactionUserStateRepository {
 
     const row = result.rows[0];
     return row === undefined ? null : mapEffectiveState(row);
+  }
+
+  public async applyCorrection(
+    input: ApplyManualCorrectionInput,
+  ): Promise<AppliedManualCorrection> {
+    const application = input.application;
+    if (input.actorType !== 'USER') {
+      throw new TypeError('Manual corrections require a USER actor.');
+    }
+    if (
+      input.actorId.trim() !== input.actorId ||
+      input.actorId.length === 0 ||
+      input.actorId.length > 200
+    ) {
+      throw new TypeError('Manual correction actorId must contain 1 to 200 trimmed characters.');
+    }
+    if (application.mode !== 'TRANSACTION_ONLY' && application.mode !== 'SUGGEST_FUTURE_RULE') {
+      throw new TypeError('Manual correction application mode is not supported.');
+    }
+    let suggestionConditions: Record<string, unknown> | null = null;
+    const suggestionOperations: Record<string, unknown>[] = [];
+    if (application.mode === 'SUGGEST_FUTURE_RULE') {
+      if (application.basis !== 'DESCRIPTION' && application.basis !== 'MERCHANT') {
+        throw new TypeError('Future-rule suggestion basis is not supported.');
+      }
+      const setsCategory = input.categoryOverride?.mode === 'SET';
+      const setsMerchant = input.merchantOverride?.mode === 'SET';
+      if (!setsCategory && !setsMerchant) {
+        throw new TypeError(
+          'A future-rule suggestion requires a SET category or SET merchant correction.',
+        );
+      }
+      if (
+        application.name.trim() !== application.name ||
+        application.name.length === 0 ||
+        application.name.length > 200
+      ) {
+        throw new TypeError('Suggestion name must contain 1 to 200 trimmed characters.');
+      }
+      if (!Number.isInteger(application.priority)) {
+        throw new TypeError('Suggestion priority must be an integer.');
+      }
+      const context = await this.pool.query<{
+        description_normalized: string;
+        effective_merchant_id: string | null;
+      }>(
+        `select description_normalized, effective_merchant_id
+         from v_financial_transaction_effective
+         where workspace_id = $1 and id = $2`,
+        [input.workspaceId, input.transactionId],
+      );
+      const transaction = context.rows[0];
+      if (transaction === undefined) throw new TransactionNotFoundError();
+      const condition =
+        application.basis === 'DESCRIPTION'
+          ? {
+              type: 'PREDICATE',
+              field: 'transaction.descriptionNormalized',
+              operator: 'eq',
+              value: transaction.description_normalized,
+            }
+          : transaction.effective_merchant_id === null
+            ? null
+            : {
+                type: 'PREDICATE',
+                field: 'merchant.id',
+                operator: 'eq',
+                value: transaction.effective_merchant_id,
+              };
+      if (condition === null) {
+        throw new TypeError('A merchant-based future rule requires an effective merchant.');
+      }
+      suggestionConditions = { version: '1', root: condition };
+      if (input.categoryOverride?.mode === 'SET') {
+        suggestionOperations.push({
+          type: 'SET_CATEGORY',
+          categoryId: input.categoryOverride.value,
+        });
+      }
+      if (input.merchantOverride?.mode === 'SET') {
+        suggestionOperations.push({
+          type: 'SET_MERCHANT',
+          merchantId: input.merchantOverride.value,
+        });
+      }
+    }
+
+    const { application: _application, ...update } = input;
+    void _application;
+    const state = await this.update(update);
+    let suggestion: ClassificationRuleRecord | null = null;
+    if (application.mode === 'SUGGEST_FUTURE_RULE' && suggestionConditions !== null) {
+      suggestion = await new ClassificationRuleRepository(this.pool).createRule(input.workspaceId, {
+        actions: { version: '1', operations: suggestionOperations },
+        actorId: input.actorId,
+        conditions: suggestionConditions,
+        name: application.name,
+        priority: application.priority,
+        source: 'SYSTEM_SUGGESTION',
+      });
+    }
+
+    await this.pool.query(
+      `insert into audit_event (
+         workspace_id, actor_type, actor_id, event_type, target_type, target_id, details
+       ) values ($1, 'USER', $2, 'MANUAL_CORRECTION_APPLIED', 'FINANCIAL_TRANSACTION', $3,
+                 jsonb_build_object('applicationMode', $4::text, 'stateVersion', $5::integer))`,
+      [input.workspaceId, input.actorId, input.transactionId, application.mode, state.version],
+    );
+    return { applicationMode: application.mode, state, suggestion };
   }
 
   public async update(input: UpdateTransactionUserStateInput): Promise<TransactionUserStateRecord> {

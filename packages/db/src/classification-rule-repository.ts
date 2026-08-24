@@ -49,6 +49,11 @@ export interface PersistedRuleEvaluationResult {
   workspaceId: string;
 }
 
+export interface ConfirmedClassificationRuleSuggestion {
+  activated: boolean;
+  rule: ClassificationRuleRecord;
+}
+
 interface RuleRow {
   actions: unknown;
   conditions: unknown;
@@ -275,6 +280,66 @@ export class ClassificationRuleRepository {
       );
       await client.query('commit');
       return mapRule(row);
+    } catch (error) {
+      await rollback(client);
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  public async confirmSuggestion(
+    workspaceId: string,
+    ruleId: string,
+    actorId: string,
+  ): Promise<ConfirmedClassificationRuleSuggestion> {
+    requireText('workspaceId', workspaceId, 100);
+    requireText('ruleId', ruleId, 100);
+    requireText('actorId', actorId, 200);
+    const client = await this.pool.connect();
+    try {
+      await client.query('begin');
+      const selected = await client.query<RuleRow>(
+        `select id, workspace_id, name, priority, conditions, actions, stop_processing,
+                source, is_active, hit_count::text, created_at, updated_at
+         from classification_rule where workspace_id = $1 and id = $2 for update`,
+        [workspaceId, ruleId],
+      );
+      const current = selected.rows[0];
+      if (current === undefined || current.source !== 'SYSTEM_SUGGESTION') {
+        throw new ClassificationRuleInvariantError(
+          'Classification rule suggestion was not found in the required workspace.',
+        );
+      }
+      const parsedActions = classificationRuleActionsSchema.parse(current.actions);
+      classificationRuleConditionsSchema.parse(current.conditions);
+      await requireActionReferences(client, workspaceId, parsedActions);
+      if (current.is_active) {
+        await client.query('commit');
+        return { activated: false, rule: mapRule(current) };
+      }
+
+      const activated = await client.query<RuleRow>(
+        `update classification_rule
+         set is_active = true, updated_at = now()
+         where workspace_id = $1 and id = $2 and source = 'SYSTEM_SUGGESTION' and not is_active
+         returning id, workspace_id, name, priority, conditions, actions, stop_processing,
+                   source, is_active, hit_count::text, created_at, updated_at`,
+        [workspaceId, ruleId],
+      );
+      const row = activated.rows[0];
+      if (row === undefined) {
+        throw new ClassificationRuleInvariantError('Rule suggestion activation returned no row.');
+      }
+      await client.query(
+        `insert into audit_event (
+           workspace_id, actor_type, actor_id, event_type, target_type, target_id, details
+         ) values ($1, 'USER', $2, 'CLASSIFICATION_RULE_SUGGESTION_CONFIRMED',
+                   'CLASSIFICATION_RULE', $3, '{}'::jsonb)`,
+        [workspaceId, actorId, ruleId],
+      );
+      await client.query('commit');
+      return { activated: true, rule: mapRule(row) };
     } catch (error) {
       await rollback(client);
       throw error;

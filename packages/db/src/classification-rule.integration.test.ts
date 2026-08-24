@@ -11,6 +11,10 @@ import {
 } from './classification-rule-repository.js';
 import { runMigrations } from './migrations.js';
 import { seedSyntheticIdentity, syntheticIdentitySeed } from './seed.js';
+import {
+  TransactionUserStateConflictError,
+  TransactionUserStateRepository,
+} from './transaction-user-state-repository.js';
 
 function quoteDatabase(identifier: string): string {
   if (!/^cashcount_rules_[0-9a-f]+$/u.test(identifier)) {
@@ -290,6 +294,119 @@ describe('PostgreSQL classification rule repository', () => {
           repository.evaluateTransaction(workspaceA, transactionB),
         ).rejects.toBeInstanceOf(ClassificationTransactionNotFoundError);
 
+        const userState = new TransactionUserStateRepository(pool);
+        const ruleCountBeforeCorrections = await pool.query<{ count: number }>(
+          `select count(*)::integer as count from classification_rule where workspace_id = $1`,
+          [workspaceA],
+        );
+        expect(ruleCountBeforeCorrections.rows[0]?.count).toBe(4);
+        const setOnly = await userState.applyCorrection({
+          actorId: 'owner-a',
+          actorType: 'USER',
+          application: { mode: 'TRANSACTION_ONLY' },
+          categoryOverride: { mode: 'SET', value: categoryA },
+          expectedVersion: 0,
+          transactionId: transactionA,
+          workspaceId: workspaceA,
+        });
+        expect(setOnly).toMatchObject({
+          applicationMode: 'TRANSACTION_ONLY',
+          state: { categoryIdOverride: categoryA, categoryOverrideEnabled: true, version: 1 },
+          suggestion: null,
+        });
+        const cleared = await userState.applyCorrection({
+          actorId: 'owner-a',
+          actorType: 'USER',
+          application: { mode: 'TRANSACTION_ONLY' },
+          categoryOverride: { mode: 'CLEAR' },
+          expectedVersion: 1,
+          transactionId: transactionA,
+          workspaceId: workspaceA,
+        });
+        expect(cleared.state).toMatchObject({
+          categoryIdOverride: null,
+          categoryOverrideEnabled: true,
+          version: 2,
+        });
+        const inherited = await userState.applyCorrection({
+          actorId: 'owner-a',
+          actorType: 'USER',
+          application: { mode: 'TRANSACTION_ONLY' },
+          categoryOverride: { mode: 'INHERIT' },
+          expectedVersion: 2,
+          transactionId: transactionA,
+          workspaceId: workspaceA,
+        });
+        expect(inherited.state).toMatchObject({
+          categoryIdOverride: null,
+          categoryOverrideEnabled: false,
+          version: 3,
+        });
+        expect(
+          await pool.query<{ count: number }>(
+            `select count(*)::integer as count from classification_rule where workspace_id = $1`,
+            [workspaceA],
+          ),
+        ).toMatchObject({ rows: [{ count: 4 }] });
+
+        const future = await userState.applyCorrection({
+          actorId: 'owner-a',
+          actorType: 'USER',
+          application: {
+            basis: 'DESCRIPTION',
+            mode: 'SUGGEST_FUTURE_RULE',
+            name: 'Future bakery category',
+            priority: 500,
+          },
+          categoryOverride: { mode: 'SET', value: categoryAlternative },
+          expectedVersion: 3,
+          transactionId: transactionA,
+          workspaceId: workspaceA,
+        });
+        expect(future.state).toMatchObject({
+          categoryIdOverride: categoryAlternative,
+          categoryOverrideEnabled: true,
+          version: 4,
+        });
+        expect(future.suggestion).toMatchObject({
+          isActive: false,
+          source: 'SYSTEM_SUGGESTION',
+        });
+        const suggestionId = future.suggestion?.id;
+        expect(suggestionId).toBeTypeOf('string');
+        if (suggestionId === undefined) throw new Error('Expected a future rule suggestion.');
+        const confirmation = await repository.confirmSuggestion(
+          workspaceA,
+          suggestionId,
+          'owner-a',
+        );
+        expect(confirmation).toMatchObject({ activated: true, rule: { isActive: true } });
+        await expect(
+          repository.confirmSuggestion(workspaceA, suggestionId, 'owner-a'),
+        ).resolves.toMatchObject({
+          activated: false,
+          rule: { isActive: true },
+        });
+        await expect(
+          repository.confirmSuggestion(workspaceB, suggestionId, 'owner-b'),
+        ).rejects.toBeInstanceOf(ClassificationRuleInvariantError);
+        await expect(
+          userState.applyCorrection({
+            actorId: 'owner-a',
+            actorType: 'USER',
+            application: { mode: 'TRANSACTION_ONLY' },
+            categoryOverride: { mode: 'SET', value: categoryA },
+            expectedVersion: 3,
+            transactionId: transactionA,
+            workspaceId: workspaceA,
+          }),
+        ).rejects.toBeInstanceOf(TransactionUserStateConflictError);
+        await expect(userState.getEffective(workspaceA, transactionA)).resolves.toMatchObject({
+          effectiveCategoryId: categoryAlternative,
+          effectiveCategorySource: 'USER',
+          userStateVersion: 4,
+        });
+
         await pool.query(
           `insert into classification_rule (
              workspace_id, name, priority, conditions, actions, source
@@ -306,7 +423,7 @@ describe('PostgreSQL classification rule repository', () => {
              where workspace_id = $1 and event_type = 'CLASSIFICATION_RULE_CREATED'`,
             [workspaceA],
           ),
-        ).toMatchObject({ rows: [{ count: 4 }] });
+        ).toMatchObject({ rows: [{ count: 5 }] });
       } finally {
         await pool.end();
       }
