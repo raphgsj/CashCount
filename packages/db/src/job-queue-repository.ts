@@ -2,6 +2,7 @@ import type { Pool } from 'pg';
 
 import {
   insertQueueJob,
+  queueJobTypes,
   type EnqueuedJob,
   type EnqueueJobInput,
   type QueueJobPayload,
@@ -48,6 +49,7 @@ export interface ClaimedQueueJob {
 }
 
 export interface ClaimQueueJobInput {
+  jobTypes?: readonly QueueJobType[];
   leaseDurationMs?: number;
   now: Date;
   workerId: string;
@@ -210,6 +212,14 @@ export class JobQueueRepository {
   ): Promise<ClaimedQueueJob | null> {
     requireWorkerCapability(capability);
     requireWorkerId(input.workerId);
+    if (input.jobTypes !== undefined) {
+      if (
+        input.jobTypes.length === 0 ||
+        input.jobTypes.some((jobType) => !queueJobTypes.includes(jobType))
+      ) {
+        throw new TypeError('jobTypes must contain one or more supported queue job types.');
+      }
+    }
     const expiresAt = leaseExpiry(input.now, input.leaseDurationMs);
     const result = await this.pool.query<ClaimedQueueRow>(
       `with candidate as (
@@ -218,6 +228,7 @@ export class JobQueueRepository {
          where status in ('PENDING', 'RETRY')
            and available_at <= $1::timestamptz
            and attempt_count < max_attempts
+           and ($4::text[] is null or job_type = any($4::text[]))
          order by priority desc, created_at, id
          for update skip locked
          limit 1
@@ -237,7 +248,7 @@ export class JobQueueRepository {
        returning job.id, job.workspace_id, job.job_type, job.payload, job.dedupe_key,
                  job.status, job.priority, job.available_at, job.started_at, job.heartbeat_at,
                  job.lease_expires_at, job.attempt_count, job.max_attempts`,
-      [input.now, input.workerId, expiresAt],
+      [input.now, input.workerId, expiresAt, input.jobTypes ?? null],
     );
     const row = result.rows[0];
     return row === undefined ? null : claimedJob(row);

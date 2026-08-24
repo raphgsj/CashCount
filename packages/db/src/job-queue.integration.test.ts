@@ -87,7 +87,17 @@ describe('PostgreSQL job queue repository', () => {
           }),
         ).toThrow(/capability/u);
 
+        const unsupportedForInitialWorker = await repository.enqueueSystem(systemQueueCapability, {
+          availableAt: queuedAt,
+          dedupeKey: 'webhook:registered-type-filter',
+          jobType: 'PROCESS_WEBHOOK',
+          maxAttempts: 3,
+          payload: { webhookEventId: '50000000-0000-4000-8000-000000000010' },
+          priority: 1_000,
+        });
+
         const initialClaim = await repository.claim(queueWorkerCapability, {
+          jobTypes: ['SYNC_CONNECTION'],
           now: queuedAt,
           workerId: 'worker-initial',
         });
@@ -129,6 +139,20 @@ describe('PostgreSQL job queue repository', () => {
             instant('2026-08-24T00:00:32.000Z'),
           ),
         ).rejects.toBeInstanceOf(QueueLeaseLostError);
+
+        const registeredTypeClaim = await repository.claim(queueWorkerCapability, {
+          jobTypes: ['PROCESS_WEBHOOK'],
+          now: instant('2026-08-24T00:00:33.000Z'),
+          workerId: 'worker-registered-webhook',
+        });
+        expect(registeredTypeClaim?.id).toBe(unsupportedForInitialWorker.id);
+        if (registeredTypeClaim === null) throw new Error('Expected registered-type queue claim.');
+        await repository.complete(
+          queueWorkerCapability,
+          registeredTypeClaim.id,
+          'worker-registered-webhook',
+          instant('2026-08-24T00:00:34.000Z'),
+        );
 
         const replacement = await repository.enqueueWorkspace(workspaceId, {
           availableAt: instant('2026-08-25T00:00:00.000Z'),

@@ -68,9 +68,11 @@ record; the versioned implementation plan is the canonical specification.
 - PF-041 adds the capability-gated PostgreSQL queue repository with workspace/system enqueue,
   UUID-only payloads, active dedupe, atomic `SKIP LOCKED` claims, heartbeats, ownership/expiry checks,
   bounded retries, dead-lettering, and stale-lease reclamation under concurrent workers.
-- The next ticket is PF-042, which adds the persistent worker process. Do not imply that event
-  handlers, product authentication, rule evaluation, analytics services, general repositories, or
-  product UI exist.
+- PF-042 adds the persistent worker runtime with registered-type-only claims, bounded concurrency,
+  lease heartbeats, stale-lock recovery, redacted failure disposition, signal-driven claim shutdown,
+  in-flight draining, and PostgreSQL pool release. No handlers are registered yet.
+- The next ticket is PF-043, which adds event handlers. Do not imply that product authentication,
+  rule evaluation, analytics services, general repositories, or product UI exist.
 - ADRs 0008, 0009, and 0010 define mandatory credential, workspace, provider-identity, signed-amount,
   and bill-reconciliation behavior for subsequent tickets.
 - Update this section and the root README together whenever a PF ticket or phase is completed.

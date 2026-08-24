@@ -56,6 +56,8 @@ and typed lost-lease rejection for completion/failure. Attempts increment on cla
 and expired final attempts become queryable `DEAD` rows, while stale eligible attempts are reclaimed
 under row locks and requeued with bounded backoff. Concurrent tests prove active dedupe is scoped by
 workspace and no job is claimed twice.
+PF-042 may additionally restrict a claim to the worker's registered job types, preventing a deployed
+process from consuming durable work before its handler exists.
 
 From the repository root:
 
