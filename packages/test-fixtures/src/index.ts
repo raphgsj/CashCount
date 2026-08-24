@@ -9,5 +9,9 @@ export {
   pluggyTransactionMatrixBody,
   pluggyTransactionMatrixExpected,
 } from './pluggy.js';
+export {
+  currencyTimezoneFixtureAccountId,
+  currencyTimezoneTransactionFixtures,
+} from './currency-timezone.js';
 
 export const packageName = '@cashcount/test-fixtures' as const;

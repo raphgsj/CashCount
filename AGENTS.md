@@ -118,7 +118,10 @@ record; the versioned implementation plan is the canonical specification.
   provider mapping, import/re-import, deterministic rules, analytics, bill reconciliation, and the
   quality queue. Shared strict web-owner and bounded identifier-free MCP schemas treat missing
   enrichment as unclassified data; they do not implement either later service.
-- The next ticket is PF-058, which adds the currency and timezone regression suite.
+- PF-058 completes Phase 5 with dual-currency and timezone regression coverage for exact original
+  and account-currency values, explicit unconverted warnings, UTC/local boundaries, and non-São-
+  Paulo workspaces through shared consumer contracts.
+- The next ticket is PF-060, which adds the API framework, authentication, and roles.
   Do not imply that analytics services, product authentication, general repositories, or product UI
   exist.
 - ADRs 0008, 0009, and 0010 define mandatory credential, workspace, provider-identity, signed-amount,

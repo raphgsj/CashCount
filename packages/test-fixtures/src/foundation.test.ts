@@ -298,23 +298,16 @@ describe('repository foundation', () => {
     const agentInstructions = readFileSync(join(repositoryRoot, 'AGENTS.md'), 'utf8');
     const adrIndex = readFileSync(join(repositoryRoot, 'docs', 'adr', 'README.md'), 'utf8');
 
-    expect(readme).toContain(
-      '**Phases 0 through 2 are complete, and Phase 3 is in progress through PF-030:**',
-    );
-    expect(readme).toContain('The next ticket is **PF-031: Connection');
+    expect(readme).toContain('**Phases 0 through 5 are complete:**');
+    expect(readme).toContain('The next ticket is **PF-060: API framework');
     expect(readme).toContain('configuration-validated shell; future Next.js web application');
     expect(agentInstructions).toContain('## Current implementation state');
     expect(agentInstructions).toContain('Phase 0 is complete: PF-001 through PF-006.');
     expect(agentInstructions).toContain('Phase 1 is complete: PF-010 through PF-019');
-    expect(agentInstructions).toContain('PF-020 starts Phase 2');
-    expect(agentInstructions).toContain('PF-021 adds account-aware direction/role classification');
-    expect(agentInstructions).toContain('PF-022 adds strict provider-neutral runtime contracts');
-    expect(agentInstructions).toContain('PF-023 adds server-side Pluggy API-key creation');
-    expect(agentInstructions).toContain('PF-024 adds validated Item/account/bill/V2-transaction');
-    expect(agentInstructions).toContain('PF-025 adds the complete sanitized Pluggy fixture matrix');
-    expect(agentInstructions).toContain('PF-026 completes Phase 2');
-    expect(agentInstructions).toContain('PF-030 starts Phase 3');
-    expect(agentInstructions).toContain('The next ticket is PF-031');
+    expect(agentInstructions).toContain('PF-046 completes Phase 4');
+    expect(agentInstructions).toContain('PF-050 starts Phase 5');
+    expect(agentInstructions).toContain('PF-058 completes Phase 5');
+    expect(agentInstructions).toContain('The next ticket is PF-060');
     expect(agentInstructions).toContain('Update this section and the root README together');
     expect(adrIndex).toContain('These records complete the');
     expect(adrIndex).toContain('Phase 0 decision backlog');

@@ -43,6 +43,18 @@ describe('financial dates', () => {
     expect(deriveFinancialDate('2026-03-08T07:30:00Z', 'America/New_York')).toBe('2026-03-08');
   });
 
+  it.each([
+    ['UTC midnight', '2026-08-24T00:00:00Z', '2026-08-23'],
+    ['before local midnight', '2026-08-24T02:59:59Z', '2026-08-23'],
+    ['at local midnight', '2026-08-24T03:00:00Z', '2026-08-24'],
+    ['month boundary', '2026-09-01T02:59:59Z', '2026-08-31'],
+    ['year boundary', '2027-01-01T02:59:59Z', '2026-12-31'],
+    ['leap-day boundary', '2024-03-01T02:59:59Z', '2024-02-29'],
+    ['explicit offset', '2026-08-24T00:30:00-03:00', '2026-08-24'],
+  ])('derives the Sao Paulo %s fixture', (_name, instant, expected) => {
+    expect(deriveFinancialDate(instant, 'America/Sao_Paulo')).toBe(expected);
+  });
+
   it('requires valid timezones and explicit-offset instants', () => {
     expect(parseIanaTimezone('Pacific/Auckland')).toBe('Pacific/Auckland');
     expect(parseInstant('2026-08-23T01:30:00-03:00').toISOString()).toBe(
