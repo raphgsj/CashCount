@@ -568,6 +568,9 @@ export const merchant = pgTable(
   (table) => [
     unique('merchant_workspace_id_id_uq').on(table.workspaceId, table.id),
     unique('merchant_workspace_normalized_key_uq').on(table.workspaceId, table.normalizedKey),
+    uniqueIndex('merchant_workspace_cnpj_hash_uq')
+      .on(table.workspaceId, table.cnpjHash)
+      .where(sql`${table.cnpjHash} is not null`),
     check('merchant_canonical_name_nonempty_ck', sql`length(trim(${table.canonicalName})) > 0`),
     check('merchant_normalized_key_nonempty_ck', sql`length(trim(${table.normalizedKey})) > 0`),
     check(
@@ -594,6 +597,7 @@ export const merchantAlias = pgTable(
     source: text('source').notNull(),
     confidence: numeric('confidence', { precision: 5, scale: 4 }).notNull(),
     isActive: boolean('is_active').notNull().default(true),
+    isConfirmed: boolean('is_confirmed').notNull().default(false),
     ...timestamps(),
   },
   (table) => [

@@ -1,0 +1,2 @@
+ALTER TABLE "merchant_alias" ADD COLUMN "is_confirmed" boolean DEFAULT false NOT NULL;--> statement-breakpoint
+CREATE UNIQUE INDEX "merchant_workspace_cnpj_hash_uq" ON "merchant" USING btree ("workspace_id","cnpj_hash") WHERE "merchant"."cnpj_hash" is not null;

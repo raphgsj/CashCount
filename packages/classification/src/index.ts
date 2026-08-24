@@ -10,3 +10,9 @@ export {
   type TransactionReference,
   type TransactionReferenceKind,
 } from './description-normalizer.js';
+export {
+  merchantCandidateSimilarity,
+  merchantFuzzyReviewThreshold,
+  merchantPatternAutoMatchThreshold,
+  merchantResolutionPolicyVersion,
+} from './merchant-similarity.js';

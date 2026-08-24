@@ -89,9 +89,13 @@ record; the versioned implementation plan is the canonical specification.
   Unicode, punctuation, exact processor prefixes, likely store suffixes, installment metadata, and
   transaction references. Sanitized fixtures prove removed fragments remain structured, and
   transaction import preserves original text while storing the canonical matching key.
-- The next ticket is PF-051, which implements merchant aliases, canonical merchants, and provisional
-  candidates. Do not imply that rule evaluation, analytics services, product authentication,
-  general repositories, or product UI exist.
+- PF-051 adds audited workspace-scoped canonical merchants and explicitly confirmed aliases, exact
+  key and identity-hash resolution, unambiguous high-confidence pattern matching, bounded fuzzy
+  review candidates, and concurrency-safe provisional merchants. PostgreSQL enforces workspace-
+  unique non-null identity hashes, and unconfirmed aliases fail closed.
+- The next ticket is PF-052, which adds a constrained rule DSL and validator without arbitrary code.
+  Do not imply that rule evaluation, analytics services, product authentication, general
+  repositories, or product UI exist.
 - ADRs 0008, 0009, and 0010 define mandatory credential, workspace, provider-identity, signed-amount,
   and bill-reconciliation behavior for subsequent tickets.
 - Update this section and the root README together whenever a PF ticket or phase is completed.

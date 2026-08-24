@@ -68,6 +68,20 @@ export {
   type ReconciliationConnectionTarget,
 } from './reconciliation-repository.js';
 export {
+  MerchantAliasConflictError,
+  MerchantResolutionInvariantError,
+  MerchantResolutionRepository,
+  type ConfirmMerchantAliasInput,
+  type CreateCanonicalMerchantInput,
+  type MerchantRecord,
+  type MerchantResolutionMethod,
+  type MerchantResolutionResult,
+  type MerchantReviewCandidate,
+  type MerchantReviewReason,
+  type MerchantReviewStatus,
+  type ResolveMerchantInput,
+} from './merchant-resolution-repository.js';
+export {
   SyncOperationalRepository,
   type ManualReconciliationRequest,
   type OperationalDeadLetter,
