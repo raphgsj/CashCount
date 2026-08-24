@@ -17,6 +17,10 @@ export {
 } from './encryption.js';
 export { seedSyntheticIdentity, syntheticIdentitySeed } from './seed.js';
 export {
+  ProviderConnectionRepository,
+  type AssignedProviderConnection,
+} from './provider-connection-repository.js';
+export {
   financialRoles,
   TransactionNotFoundError,
   TransactionUserStateConflictError,

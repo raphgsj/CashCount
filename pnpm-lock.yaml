@@ -59,6 +59,15 @@ importers:
       '@cashcount/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@cashcount/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      '@cashcount/provider-core':
+        specifier: workspace:*
+        version: link:../../packages/provider-core
+      '@cashcount/provider-pluggy':
+        specifier: workspace:*
+        version: link:../../packages/provider-pluggy
 
   packages/analytics: {}
 
@@ -77,6 +86,9 @@ importers:
       '@cashcount/config':
         specifier: workspace:*
         version: link:../config
+      '@cashcount/provider-core':
+        specifier: workspace:*
+        version: link:../provider-core
       drizzle-orm:
         specifier: 0.45.2
         version: 0.45.2(@types/pg@8.23.1)(pg@8.23.0)

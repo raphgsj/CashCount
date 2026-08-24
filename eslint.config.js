@@ -39,6 +39,7 @@ export default tseslint.config(
       'packages/db/src/seed-cli.ts',
       'packages/db/src/*.integration.test.ts',
       'apps/*/src/index.ts',
+      'apps/worker/src/discover-cli.ts',
     ],
     rules: {
       'no-restricted-syntax': 'off',

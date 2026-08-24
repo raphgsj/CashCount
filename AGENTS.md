@@ -41,8 +41,10 @@ record; the versioned implementation plan is the canonical specification.
 - PF-030 starts Phase 3 with versioned context-bound AES-256-GCM encryption, exact canonical JSON
   hashing, active-key writes/mixed-version reads, fail-closed tamper and retirement checks, strict
   database envelopes, and durable resumable rotation progress.
-- The next ticket is PF-031, which adds the explicit-workspace safe-label connection discovery
-  command. Do not imply that account/transaction/bill import, queue worker behavior, product
+- PF-031 adds explicit-workspace Pluggy connection discovery with preflight workspace validation,
+  atomic normalized assignment, disabled-state preservation, and safe-label-only output.
+- The next ticket is PF-032, which adds account import. Do not imply that transaction/bill import,
+  queue worker behavior, product
   authentication, rule evaluation, analytics services, general repositories, or product UI exist.
 - ADRs 0008, 0009, and 0010 define mandatory credential, workspace, provider-identity, signed-amount,
   and bill-reconciliation behavior for subsequent tickets.

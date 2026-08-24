@@ -4,10 +4,14 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { parseDatabaseConfig } from '@cashcount/config';
+import type { ProviderConnectionDto } from '@cashcount/provider-core';
+import { drizzle } from 'drizzle-orm/node-postgres';
 import { Client, Pool } from 'pg';
 import { describe, expect, it } from 'vitest';
 
 import { defaultMigrationsFolder, runMigrations } from './migrations.js';
+import { ProviderConnectionRepository } from './provider-connection-repository.js';
+import * as schema from './schema.js';
 import { seedSyntheticIdentity, syntheticIdentitySeed } from './seed.js';
 import {
   TransactionNotFoundError,
@@ -262,6 +266,74 @@ describe('database migrations', () => {
         await expect(
           client.query(`delete from workspace where id = '${syntheticIdentitySeed.workspace.id}'`),
         ).rejects.toMatchObject({ code: '23001' });
+      } finally {
+        await client.end();
+      }
+    });
+  }, 30_000);
+
+  it('assigns discovered provider connections without persisting raw evidence', async () => {
+    await withTemporaryDatabase(async (connectionString) => {
+      await runMigrations(connectionString);
+      await seedSyntheticIdentity(connectionString, 'test');
+
+      const client = new Client({ connectionString });
+      const workspaceId = syntheticIdentitySeed.workspace.id;
+      const discoveredConnection: ProviderConnectionDto = {
+        actionRequiredAt: null,
+        consentExpiresAt: '2026-11-23T12:00:00.000Z',
+        displayName: 'Synthetic Fixture Bank',
+        errorCode: null,
+        executionStatus: 'SUCCESS',
+        externalConnectionId: 'synthetic-discovered-item',
+        externalConnectorId: 'synthetic-connector',
+        itemStatus: 'UPDATED',
+        localStatus: 'ACTIVE',
+        providerUpdatedAt: '2026-08-23T12:00:00.000Z',
+        raw: { confidentialFixtureMarker: 'must-not-persist' },
+      };
+
+      try {
+        await client.connect();
+        const repository = new ProviderConnectionRepository(drizzle({ client, schema }));
+        await expect(repository.workspaceExists(workspaceId)).resolves.toBe(true);
+        await expect(repository.workspaceExists(randomUUID())).resolves.toBe(false);
+        await expect(
+          repository.assignDiscoveredConnections(workspaceId, [discoveredConnection]),
+        ).resolves.toMatchObject([{ localStatus: 'ACTIVE' }]);
+
+        const inserted = await client.query<{
+          display_name: string;
+          external_connection_id: string;
+          local_status: string;
+        }>(
+          `select display_name, external_connection_id, local_status
+           from provider_connection
+           where workspace_id = $1 and provider = 'PLUGGY' and external_connection_id = $2`,
+          [workspaceId, discoveredConnection.externalConnectionId],
+        );
+        expect(inserted.rows).toEqual([
+          {
+            display_name: 'Synthetic Fixture Bank',
+            external_connection_id: 'synthetic-discovered-item',
+            local_status: 'ACTIVE',
+          },
+        ]);
+        const rawEvidence = await client.query<CountResult>(
+          `select count(*)::integer as count from provider_raw_object`,
+        );
+        expect(rawEvidence.rows[0]?.count).toBe(0);
+
+        await client.query(
+          `update provider_connection set local_status = 'DISABLED'
+           where workspace_id = $1 and provider = 'PLUGGY' and external_connection_id = $2`,
+          [workspaceId, discoveredConnection.externalConnectionId],
+        );
+        await expect(
+          repository.assignDiscoveredConnections(workspaceId, [
+            { ...discoveredConnection, displayName: 'Updated Fixture Bank' },
+          ]),
+        ).resolves.toMatchObject([{ localStatus: 'DISABLED' }]);
       } finally {
         await client.end();
       }
