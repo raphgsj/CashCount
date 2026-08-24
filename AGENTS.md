@@ -82,9 +82,12 @@ record; the versioned implementation plan is the canonical specification.
 - PF-045 adds a fixed-workspace web-owner operational API for bounded sync-run/dead-letter reads,
   controlled supported-job retry, and deduplicated manual reconciliation. The persistent worker
   executes `SYNC_CONNECTION` through the shared reconciliation path with `MANUAL` sync provenance.
-- The next ticket is PF-046, which hardens queue lease behavior and completes Phase 4. Do not imply
-  that product authentication, rule evaluation, analytics services, general repositories, or
-  product UI exist.
+- PF-046 completes Phase 4 with monotonic lease timestamps, distinct lost-lease signaling and
+  handler cancellation, and database-backed proof of running-job dedupe, exact-expiry rejection,
+  expired-lease reclaim, stale-owner completion rejection, and graceful signal-driven draining.
+- The next ticket is PF-050, which starts Phase 5 with a pure description normalizer and fixture
+  tests. Do not imply that product authentication, rule evaluation, analytics services, general
+  repositories, or product UI exist.
 - ADRs 0008, 0009, and 0010 define mandatory credential, workspace, provider-identity, signed-amount,
   and bill-reconciliation behavior for subsequent tickets.
 - Update this section and the root README together whenever a PF ticket or phase is completed.

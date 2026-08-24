@@ -30,6 +30,7 @@ export interface QueueWorkerOperationalEvent {
     | 'QUEUE_COMPLETE_FAILED'
     | 'QUEUE_FAILURE_RECORD_FAILED'
     | 'QUEUE_HEARTBEAT_FAILED'
+    | 'QUEUE_LEASE_LOST'
     | 'QUEUE_PROCESS_FAILED'
     | 'QUEUE_RECLAIM_FAILED';
   jobId?: string;
@@ -257,6 +258,7 @@ export class PersistentQueueWorker {
           if (error instanceof QueueLeaseLostError) {
             leaseLost = true;
             handlerController.abort();
+            this.#report({ code: 'QUEUE_LEASE_LOST', jobId: job.id });
             return;
           }
           this.#report({ code: 'QUEUE_HEARTBEAT_FAILED', jobId: job.id });
@@ -279,8 +281,11 @@ export class PersistentQueueWorker {
     if (handlerError === undefined) {
       try {
         await this.#queue.complete(queueWorkerCapability, job.id, this.#workerId, now);
-      } catch {
-        this.#report({ code: 'QUEUE_COMPLETE_FAILED', jobId: job.id });
+      } catch (error) {
+        this.#report({
+          code: error instanceof QueueLeaseLostError ? 'QUEUE_LEASE_LOST' : 'QUEUE_COMPLETE_FAILED',
+          jobId: job.id,
+        });
       }
       return;
     }
@@ -302,8 +307,12 @@ export class PersistentQueueWorker {
         retryAt: failure.retryable ? retryAt(now, job.attemptCount, this.#random) : null,
         workerId: this.#workerId,
       });
-    } catch {
-      this.#report({ code: 'QUEUE_FAILURE_RECORD_FAILED', jobId: job.id });
+    } catch (error) {
+      this.#report({
+        code:
+          error instanceof QueueLeaseLostError ? 'QUEUE_LEASE_LOST' : 'QUEUE_FAILURE_RECORD_FAILED',
+        jobId: job.id,
+      });
     }
   }
 

@@ -109,6 +109,20 @@ describe('PostgreSQL job queue repository', () => {
           status: 'RUNNING',
         });
         if (initialClaim === null) throw new Error('Expected initial queue claim.');
+        const runningDedupe = await Promise.all(
+          Array.from({ length: 12 }, () =>
+            repository.enqueueWorkspace(workspaceId, {
+              availableAt: queuedAt,
+              dedupeKey: 'sync-connection:synthetic',
+              jobType: 'SYNC_CONNECTION',
+              maxAttempts: 3,
+              payload: { providerConnectionId: connectionId },
+              priority: 100,
+            }),
+          ),
+        );
+        expect(runningDedupe.every(({ created }) => !created)).toBe(true);
+        expect(new Set(runningDedupe.map(({ id }) => id))).toEqual(new Set([initialClaim.id]));
         await expect(
           repository.complete(
             queueWorkerCapability,
@@ -123,8 +137,33 @@ describe('PostgreSQL job queue repository', () => {
             initialClaim.id,
             'worker-initial',
             instant('2026-08-24T00:00:30.000Z'),
+            1_000,
+          ),
+        ).toEqual(instant('2026-08-24T00:02:00.000Z'));
+        expect(
+          await repository.heartbeat(
+            queueWorkerCapability,
+            initialClaim.id,
+            'worker-initial',
+            instant('2026-08-24T00:00:30.000Z'),
           ),
         ).toEqual(instant('2026-08-24T00:02:30.000Z'));
+        await expect(
+          repository.heartbeat(
+            queueWorkerCapability,
+            initialClaim.id,
+            'worker-initial',
+            instant('2026-08-24T00:00:29.000Z'),
+          ),
+        ).rejects.toBeInstanceOf(QueueLeaseLostError);
+        await expect(
+          repository.complete(
+            queueWorkerCapability,
+            initialClaim.id,
+            'worker-initial',
+            instant('2026-08-24T00:00:29.000Z'),
+          ),
+        ).rejects.toBeInstanceOf(QueueLeaseLostError);
         await repository.complete(
           queueWorkerCapability,
           initialClaim.id,
@@ -275,6 +314,33 @@ describe('PostgreSQL job queue repository', () => {
             now: instant('2026-08-24T03:00:00.999Z'),
           }),
         ).toEqual([]);
+        if (staleClaim === null) throw new Error('Expected stale queue claim.');
+        await expect(
+          repository.heartbeat(
+            queueWorkerCapability,
+            staleClaim.id,
+            'worker-stale',
+            instant('2026-08-24T03:00:01.000Z'),
+          ),
+        ).rejects.toBeInstanceOf(QueueLeaseLostError);
+        await expect(
+          repository.complete(
+            queueWorkerCapability,
+            staleClaim.id,
+            'worker-stale',
+            instant('2026-08-24T03:00:01.000Z'),
+          ),
+        ).rejects.toBeInstanceOf(QueueLeaseLostError);
+        await expect(
+          repository.fail(queueWorkerCapability, {
+            errorCode: 'LEASE_EXPIRED',
+            jobId: staleClaim.id,
+            now: instant('2026-08-24T03:00:01.000Z'),
+            redactedSummary: 'The worker lease expired.',
+            retryAt: instant('2026-08-24T03:00:02.000Z'),
+            workerId: 'worker-stale',
+          }),
+        ).rejects.toBeInstanceOf(QueueLeaseLostError);
         expect(
           await repository.reclaimExpired(queueWorkerCapability, {
             now: instant('2026-08-24T03:00:01.000Z'),
@@ -296,6 +362,14 @@ describe('PostgreSQL job queue repository', () => {
         });
         expect(reclaimedClaim).toMatchObject({ attemptCount: 2, id: reclaimJob.id });
         if (reclaimedClaim === null) throw new Error('Expected reclaimed claim.');
+        await expect(
+          repository.complete(
+            queueWorkerCapability,
+            reclaimedClaim.id,
+            'worker-stale',
+            instant('2026-08-24T03:00:02.000Z'),
+          ),
+        ).rejects.toBeInstanceOf(QueueLeaseLostError);
         await repository.complete(
           queueWorkerCapability,
           reclaimedClaim.id,

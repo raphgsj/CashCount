@@ -267,10 +267,10 @@ export class JobQueueRepository {
     const result = await this.pool.query<{ lease_expires_at: Date }>(
       `update job_queue
        set heartbeat_at = $3::timestamptz,
-           lease_expires_at = $4::timestamptz,
+           lease_expires_at = greatest(lease_expires_at, $4::timestamptz),
            updated_at = $3::timestamptz
        where id = $1::uuid and status = 'RUNNING' and locked_by = $2
-         and lease_expires_at > $3::timestamptz
+         and heartbeat_at <= $3::timestamptz and lease_expires_at > $3::timestamptz
        returning lease_expires_at`,
       [jobId, workerId, now, expiresAt],
     );
@@ -294,7 +294,7 @@ export class JobQueueRepository {
            locked_at = null, locked_by = null, heartbeat_at = null, lease_expires_at = null,
            updated_at = $3::timestamptz
        where id = $1::uuid and status = 'RUNNING' and locked_by = $2
-         and lease_expires_at > $3::timestamptz
+         and heartbeat_at <= $3::timestamptz and lease_expires_at > $3::timestamptz
        returning id`,
       [jobId, workerId, now],
     );
@@ -324,7 +324,7 @@ export class JobQueueRepository {
            locked_at = null, locked_by = null, heartbeat_at = null, lease_expires_at = null,
            last_error_code = $5, last_error_summary = $6, updated_at = $3::timestamptz
        where id = $1::uuid and status = 'RUNNING' and locked_by = $2
-         and lease_expires_at > $3::timestamptz
+         and heartbeat_at <= $3::timestamptz and lease_expires_at > $3::timestamptz
        returning status`,
       [
         input.jobId,

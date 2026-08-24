@@ -1,6 +1,6 @@
 import { EventEmitter } from 'node:events';
 
-import type { ClaimedQueueJob, QueueJobType } from '@cashcount/db';
+import { QueueLeaseLostError, type ClaimedQueueJob, type QueueJobType } from '@cashcount/db';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -173,6 +173,78 @@ describe('persistent queue worker', () => {
     expect(state.completedIds).toEqual([claimedJob(10).id]);
     expect(signals.listenerCount('SIGTERM')).toBe(0);
     expect(signals.listenerCount('SIGINT')).toBe(0);
+  });
+
+  it('aborts the handler and never completes or fails after heartbeat lease loss', async () => {
+    const state = emptyState();
+    const events: string[] = [];
+    let handlerAborted = false;
+    const job = claimedJob(11);
+    const queue = fakeQueue([job], state);
+    queue.heartbeat = async () => {
+      state.heartbeatCount += 1;
+      throw new QueueLeaseLostError(job.id);
+    };
+    const worker = new PersistentQueueWorker({
+      concurrency: 1,
+      handlers: {
+        PROCESS_WEBHOOK: async (_claimed, context) => {
+          await new Promise<void>((resolve) => {
+            context.signal.addEventListener(
+              'abort',
+              () => {
+                handlerAborted = true;
+                worker.requestStop();
+                resolve();
+              },
+              { once: true },
+            );
+          });
+        },
+      },
+      heartbeatIntervalMs: 1,
+      leaseDurationMs: 1_000,
+      onOperationalEvent: (event) => events.push(`${event.code}:${event.jobId ?? ''}`),
+      pollIntervalMs: 1,
+      queue,
+      workerId: 'worker-lease-loss',
+    });
+
+    await worker.run();
+
+    expect(handlerAborted).toBe(true);
+    expect(state.heartbeatCount).toBe(1);
+    expect(state.completedIds).toEqual([]);
+    expect(state.failed).toEqual([]);
+    expect(events).toEqual([`QUEUE_LEASE_LOST:${job.id}`]);
+    expect(worker.activeJobCount).toBe(0);
+  });
+
+  it('reports lease loss when completion is rejected by PostgreSQL ownership checks', async () => {
+    const state = emptyState();
+    const events: string[] = [];
+    const job = claimedJob(12);
+    const queue = fakeQueue([job], state);
+    queue.complete = async () => {
+      throw new QueueLeaseLostError(job.id);
+    };
+    const worker: PersistentQueueWorker = new PersistentQueueWorker({
+      concurrency: 1,
+      handlers: {
+        PROCESS_WEBHOOK: async (): Promise<void> => worker.requestStop(),
+      },
+      heartbeatIntervalMs: 10,
+      leaseDurationMs: 1_000,
+      onOperationalEvent: (event) => events.push(`${event.code}:${event.jobId ?? ''}`),
+      pollIntervalMs: 1,
+      queue,
+      workerId: 'worker-completion-lease-loss',
+    });
+
+    await worker.run();
+
+    expect(state.completedIds).toEqual([]);
+    expect(events).toEqual([`QUEUE_LEASE_LOST:${job.id}`]);
   });
 
   it('retries only explicitly transient failures and stores redacted summaries', async () => {
