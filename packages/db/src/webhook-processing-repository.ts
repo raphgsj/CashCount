@@ -1,5 +1,6 @@
 import type { Pool } from 'pg';
 
+import { providerConnectionLockKey, withAdvisoryLock } from './advisory-lock.js';
 import type { PayloadEncryptionService } from './encryption.js';
 
 export type WebhookProcessingStatus = 'FAILED' | 'IGNORED' | 'PROCESSED' | 'QUEUED' | 'UNMAPPED';
@@ -60,30 +61,11 @@ export class WebhookProcessingRepository {
     externalConnectionId: string,
     action: () => Promise<Result>,
   ): Promise<Result> {
-    const client = await this.pool.connect();
-    const lockKey = `webhook-connection:${workspaceId}:${externalConnectionId}`;
-    try {
-      await client.query(`select pg_advisory_lock(hashtextextended($1, 0))`, [lockKey]);
-    } catch (error) {
-      client.release(error instanceof Error ? error : new Error('Advisory lock failed.'));
-      throw error;
-    }
-
-    let outcome: { error: unknown; succeeded: false } | { succeeded: true; value: Result };
-    try {
-      outcome = { succeeded: true, value: await action() };
-    } catch (error) {
-      outcome = { error, succeeded: false };
-    }
-    try {
-      await client.query(`select pg_advisory_unlock(hashtextextended($1, 0))`, [lockKey]);
-      client.release();
-    } catch (error) {
-      client.release(error instanceof Error ? error : new Error('Advisory unlock failed.'));
-      throw error;
-    }
-    if (!outcome.succeeded) throw outcome.error;
-    return outcome.value;
+    return withAdvisoryLock(
+      this.pool,
+      providerConnectionLockKey(workspaceId, externalConnectionId),
+      action,
+    );
   }
 
   public async load(

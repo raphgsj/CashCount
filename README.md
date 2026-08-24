@@ -5,7 +5,7 @@ owner's financial data through a provider adapter, preserves normalized history 
 and exposes deterministic analytics to an authenticated web application and a read-only MCP
 server.
 
-**Phases 0 through 3 are complete; Phase 4 is in progress through PF-043:**
+**Phases 0 through 3 are complete; Phase 4 is in progress through PF-044:**
 
 - **PF-001** established the monorepo and application/package foundations.
 - **PF-002** added validated application environments and production safety constraints.
@@ -95,16 +95,21 @@ server.
   idempotent audit evidence for later owner surfacing; deletion retains history and stops pending
   refreshes; and created, updated, and deleted transactions are fetched only through V2,
   soft-deleted with revisions, and followed by conservative same-sync replacement detection.
+- **PF-044** added an explicit-workspace one-shot scheduled reconciliation command with
+  PostgreSQL-backed overlap protection, the same per-connection exclusion used by webhook work,
+  bounded provider refresh observation, full V2 repair import, and connection health/freshness
+  updates.
 
 PF-003 through PF-006 are architecture-documentation milestones; executable implementation now
 extends through Phase 2's database foundation, deterministic domain policy, validated provider
 adapter, complete synthetic fixture matrix, explicit lifecycle mapping, and PF-030's versioned
 encryption boundary plus controlled connection discovery and account, transaction, and bill import.
 The persistent worker currently claims only its implemented `PROCESS_WEBHOOK` job type; scheduled
-reconciliation and the remaining queue job handlers are not yet registered. The repository
+reconciliation is an independent terminating command, and the remaining queue job handlers are not
+yet registered. The repository
 intentionally contains no product authentication, rule evaluator, analytics service, general
-financial-data repositories, product UI, or production secrets. The next ticket is **PF-044:
-Scheduled reconciliation**.
+financial-data repositories, product UI, or production secrets. The next ticket is **PF-045: Sync
+operational API**.
 
 The accepted decisions are indexed in [`docs/adr/`](docs/adr/README.md). In particular, ADRs 0008
 through 0010 are the implementation contracts for credential boundaries, workspace integrity, and
@@ -157,6 +162,15 @@ existing workspace with `pnpm --filter @cashcount/worker sync:discover --workspa
 Run one controlled full import only after discovery and explicit assignment with `pnpm sync:full
 --workspace <workspace-uuid> --connection <connection-uuid>`. The command imports accounts, V2
 transactions, and bills in dependency order and prints only aggregate counts.
+
+Run one scheduled reconciliation pass with `pnpm sync:reconcile --workspace <workspace-uuid>`.
+The command serializes runs per workspace, serializes each Item against webhook processing,
+requests or observes bounded provider refresh, repairs missed data through the full V2 import, and
+then exits. A concurrent scheduled pass exits cleanly; any failed connection makes the command exit
+nonzero after all eligible connections have been attempted. Intended local execution is 07:00,
+12:00, 18:00, and 23:00 America/Sao_Paulo. Railway's fixed UTC expression is
+`0 2,10,15,21 * * *`; verify the local-time mapping at deployment and do not depend on exact-minute
+execution.
 
 The integration gate creates a temporary empty PostgreSQL database, applies migrations twice to
 prove idempotence, verifies the migration journal, and removes the temporary database.

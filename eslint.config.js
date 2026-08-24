@@ -42,6 +42,7 @@ export default tseslint.config(
       'apps/api/src/*.integration.test.ts',
       'apps/worker/src/discover-cli.ts',
       'apps/worker/src/full-import-cli.ts',
+      'apps/worker/src/reconcile-cli.ts',
       'apps/worker/src/*.integration.test.ts',
     ],
     rules: {

@@ -76,7 +76,10 @@ record; the versioned implementation plan is the canonical specification.
   current-Item reads, post-import ACTIVE transitions, owner-action audit evidence, V2-only created,
   updated, and deleted transaction processing, scoped soft deletion/revisions, and replacement
   detection. Deleted connections preserve history and terminate pending refresh work.
-- The next ticket is PF-044, which adds scheduled reconciliation. Do not imply that product
+- PF-044 adds an explicit-workspace, terminating scheduled reconciliation command with
+  PostgreSQL-backed workspace overlap protection, webhook-shared per-connection exclusion, bounded
+  provider refresh observation, full V2 repair import, and connection health/freshness updates.
+- The next ticket is PF-045, which adds the sync operational API. Do not imply that product
   authentication, rule evaluation, analytics services, general repositories, or product UI exist.
 - ADRs 0008, 0009, and 0010 define mandatory credential, workspace, provider-identity, signed-amount,
   and bill-reconciliation behavior for subsequent tickets.

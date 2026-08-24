@@ -63,6 +63,11 @@ export {
   type AssignedProviderConnection,
 } from './provider-connection-repository.js';
 export {
+  ReconciliationInvariantError,
+  ReconciliationRepository,
+  type ReconciliationConnectionTarget,
+} from './reconciliation-repository.js';
+export {
   TransactionImportInvariantError,
   TransactionImportRepository,
   type TransactionImportAccount,
