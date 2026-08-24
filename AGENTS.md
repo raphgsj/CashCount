@@ -110,7 +110,11 @@ record; the versioned implementation plan is the canonical specification.
   child/reconciliation evidence, transfers require unique reciprocal cross-account evidence, and
   refunds require explicit text plus a unique prior purchase. Results are fingerprint-idempotent,
   ambiguous matches remain review-only, occupied pairs are immutable, and user state is untouched.
-- The next ticket is PF-056, which adds the classification quality report.
+- PF-056 adds a workspace-scoped effective classification quality report with fixed source buckets,
+  PostgreSQL-numeric percentages, and a bounded stable-keyset unclassified queue. Explicit user
+  clears and missing-conversion warnings remain visible; no provider identity or raw payload is
+  exposed.
+- The next ticket is PF-057, which adds the missing-enrichment regression suite.
   Do not imply that analytics services, product authentication, general repositories, or product UI
   exist.
 - ADRs 0008, 0009, and 0010 define mandatory credential, workspace, provider-identity, signed-amount,

@@ -21,6 +21,17 @@ export {
 } from './bill-import-repository.js';
 export { createDatabaseClient, type DatabaseClient } from './client.js';
 export {
+  classificationQualitySources,
+  ClassificationQualityRepository,
+  type ClassificationQualityReport,
+  type ClassificationQualitySource,
+  type ClassificationQualitySourceDistribution,
+  type ListUnclassifiedQueueInput,
+  type UnclassifiedQueueCursor,
+  type UnclassifiedQueueItem,
+  type UnclassifiedQueuePage,
+} from './classification-quality-repository.js';
+export {
   FinancialRoleDetectionInvariantError,
   FinancialRoleDetectionRepository,
   type FinancialRoleDetectionKind,
