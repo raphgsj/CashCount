@@ -114,6 +114,11 @@ server.
   and identity-hash resolution, unambiguous high-confidence prefix/contains matching, bounded fuzzy
   review candidates, and concurrent idempotent provisional creation. A new append-only migration
   makes alias confirmation explicit and identity hashes unique within each workspace.
+- **PF-052** added a versioned strict JSON condition/action DSL with only the documented fields,
+  operators, and actions; field-aware values and string-only financial decimals; bounded trees,
+  collections, text, regex patterns, and inputs; duplicate-action rejection; and Google RE2-WASM
+  compilation for linear-time user-authored patterns. It accepts neither arbitrary code nor native
+  JavaScript regular expressions.
 
 PF-003 through PF-006 are architecture-documentation milestones; executable implementation now
 extends through Phase 2's database foundation, deterministic domain policy, validated provider
@@ -123,7 +128,7 @@ The persistent worker currently claims its implemented `PROCESS_WEBHOOK` and `SY
 types; scheduled reconciliation remains an independent terminating command, and other future queue
 job handlers are not yet registered. The repository intentionally contains no product
 authentication, rule evaluator, analytics service, general financial-data repositories, product
-UI, or production secrets. The next ticket is **PF-052: Rule DSL and validator**.
+UI, or production secrets. The next ticket is **PF-053: Rule evaluator**.
 
 The accepted decisions are indexed in [`docs/adr/`](docs/adr/README.md). In particular, ADRs 0008
 through 0010 are the implementation contracts for credential boundaries, workspace integrity, and

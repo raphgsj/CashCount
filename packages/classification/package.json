@@ -13,7 +13,11 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "lint": "eslint src --max-warnings=0",
-    "test": "vitest run src/description-normalizer.test.ts src/merchant-similarity.test.ts",
+    "test": "vitest run src/description-normalizer.test.ts src/merchant-similarity.test.ts src/rule-dsl.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "re2-wasm": "1.0.2",
+    "zod": "4.4.3"
   }
 }

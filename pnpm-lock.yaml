@@ -84,7 +84,14 @@ importers:
 
   packages/analytics: {}
 
-  packages/classification: {}
+  packages/classification:
+    dependencies:
+      re2-wasm:
+        specifier: 1.0.2
+        version: 1.0.2
+      zod:
+        specifier: 4.4.3
+        version: 4.4.3
 
   packages/config:
     dependencies:
@@ -1439,6 +1446,10 @@ packages:
     resolution: {integrity: sha512-vYt7UD1U9Wg6138shLtLOvdAu+8DsC/ilFtEVHcH+wydcSpNE20AfSOduf6MkRFahL5FY7X1oU7nKVZFtfq8Fg==}
     engines: {node: '>=6'}
 
+  re2-wasm@1.0.2:
+    resolution: {integrity: sha512-VXUdgSiUrE/WZXn6gUIVVIsg0+Hp6VPZPOaHCay+OuFKy6u/8ktmeNEf+U5qSA8jzGGFsg8jrDNu1BeHpz2pJA==}
+    engines: {node: '>=10'}
+
   resolve-pkg-maps@1.0.0:
     resolution: {integrity: sha512-seS2Tj26TBVOC2NIc2rOe2y2ZO7efxITtLZcGSOnHHNOQ7CkiUBfw0Iw2ck6xkIhPwLhKNLS8BO+hEpngQlqzw==}
 
@@ -2594,6 +2605,8 @@ snapshots:
   prettier@3.9.6: {}
 
   punycode@2.3.1: {}
+
+  re2-wasm@1.0.2: {}
 
   resolve-pkg-maps@1.0.0: {}
 

@@ -93,9 +93,13 @@ record; the versioned implementation plan is the canonical specification.
   key and identity-hash resolution, unambiguous high-confidence pattern matching, bounded fuzzy
   review candidates, and concurrency-safe provisional merchants. PostgreSQL enforces workspace-
   unique non-null identity hashes, and unconfirmed aliases fail closed.
-- The next ticket is PF-052, which adds a constrained rule DSL and validator without arbitrary code.
-  Do not imply that rule evaluation, analytics services, product authentication, general
-  repositories, or product UI exist.
+- PF-052 adds a versioned, strict condition/action DSL over the documented field and operator
+  vocabulary. It uses string-only decimals, bounded trees/lists/text/patterns, field-aware values,
+  non-conflicting actions, and Google RE2-WASM for linear-time user-authored regular expressions;
+  arbitrary code and JavaScript regular expressions are not accepted.
+- The next ticket is PF-053, which adds deterministic rule evaluation, conflict reporting, and hit
+  counts. Do not imply that analytics services, product authentication, general repositories, or
+  product UI exist.
 - ADRs 0008, 0009, and 0010 define mandatory credential, workspace, provider-identity, signed-amount,
   and bill-reconciliation behavior for subsequent tickets.
 - Update this section and the root README together whenever a PF ticket or phase is completed.
