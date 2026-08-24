@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
 
 import type { PayloadEncryptionService } from './encryption.js';
+import { insertQueueJob } from './job-queue-insert.js';
 
 const webhookCapabilityBrand: unique symbol = Symbol('cashcount.authenticated-webhook-ingestion');
 
@@ -136,14 +137,12 @@ export class WebhookInboxRepository {
         return { duplicate: true, mapped: workspaceId !== null };
       }
 
-      await client.query(
-        `insert into job_queue (
-           workspace_id, job_type, payload, dedupe_key, max_attempts
-         ) values (
-           $1::uuid, 'PROCESS_WEBHOOK', jsonb_build_object('webhookEventId', $2::text), $3, 8
-         )`,
-        [workspaceId, webhook.id, `webhook-event:${webhook.id}`],
-      );
+      await insertQueueJob(client, workspaceId, {
+        dedupeKey: `webhook-event:${webhook.id}`,
+        jobType: 'PROCESS_WEBHOOK',
+        maxAttempts: 8,
+        payload: { webhookEventId: webhook.id },
+      });
       await client.query('commit');
       return { duplicate: false, mapped: workspaceId !== null };
     } catch (error) {

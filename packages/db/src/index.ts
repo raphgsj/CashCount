@@ -20,6 +20,29 @@ export {
   type BillImportTarget,
 } from './bill-import-repository.js';
 export { createDatabaseClient, type DatabaseClient } from './client.js';
+export {
+  defaultQueueHeartbeatMs,
+  defaultQueueLeaseMs,
+  JobQueueRepository,
+  QueueLeaseLostError,
+  queueWorkerCapability,
+  systemQueueCapability,
+  type ClaimedQueueJob,
+  type ClaimQueueJobInput,
+  type FailQueueJobInput,
+  type QueueJobStatus,
+  type QueueWorkerCapability,
+  type ReclaimedQueueJob,
+  type ReclaimExpiredQueueJobsInput,
+  type SystemQueueCapability,
+} from './job-queue-repository.js';
+export {
+  queueJobTypes,
+  type EnqueuedJob,
+  type EnqueueJobInput,
+  type QueueJobPayload,
+  type QueueJobType,
+} from './job-queue-insert.js';
 export { defaultMigrationsFolder, runMigrations } from './migrations.js';
 export {
   canonicalJsonSha256,

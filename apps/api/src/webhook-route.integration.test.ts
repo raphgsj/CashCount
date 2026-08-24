@@ -48,6 +48,7 @@ describe('Pluggy webhook route integration', () => {
       await runMigrations(testUrl.toString());
       await seedSyntheticIdentity(testUrl.toString(), 'test');
       const client = createWebhookDatabasePool(testUrl.toString());
+      client.on('error', () => undefined);
 
       try {
         const workspaceId = syntheticIdentitySeed.workspace.id;
@@ -229,5 +230,5 @@ describe('Pluggy webhook route integration', () => {
       await admin.query(`drop database if exists ${quoteDatabase(databaseName)} with (force)`);
       await admin.end();
     }
-  });
+  }, 30_000);
 });

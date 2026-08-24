@@ -65,8 +65,11 @@ record; the versioned implementation plan is the canonical specification.
 - PF-040 starts Phase 4 with an isolated constant-time webhook guard, bounded streaming JSON,
   official first-wave schemas, encrypted mapped/unmapped transactional inbox persistence, and one
   internal-ID-only job per event while keeping provider calls off the response path.
-- The next ticket is PF-041, which adds the queue repository. Do not imply that a durable worker
-  process, product authentication, rule evaluation, analytics services, general repositories, or
+- PF-041 adds the capability-gated PostgreSQL queue repository with workspace/system enqueue,
+  UUID-only payloads, active dedupe, atomic `SKIP LOCKED` claims, heartbeats, ownership/expiry checks,
+  bounded retries, dead-lettering, and stale-lease reclamation under concurrent workers.
+- The next ticket is PF-042, which adds the persistent worker process. Do not imply that event
+  handlers, product authentication, rule evaluation, analytics services, general repositories, or
   product UI exist.
 - ADRs 0008, 0009, and 0010 define mandatory credential, workspace, provider-identity, signed-amount,
   and bill-reconciliation behavior for subsequent tickets.

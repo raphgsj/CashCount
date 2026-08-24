@@ -49,7 +49,13 @@ idempotent revision and audit event.
 PF-040 adds a deliberately narrow authenticated-webhook capability. It resolves workspace scope only
 when stored Item/account identities select one relationship, encrypts every mapped or unmapped
 payload with context-bound active-key evidence, and atomically inserts one `PROCESS_WEBHOOK` job
-whose payload contains only the internal inbox ID. General queue operations remain PF-041 work.
+whose payload contains only the internal inbox ID.
+PF-041 adds workspace-explicit and capability-gated system enqueue with UUID-only internal payloads,
+atomic priority-ordered `FOR UPDATE SKIP LOCKED` claims, 120-second default leases, heartbeat renewal,
+and typed lost-lease rejection for completion/failure. Attempts increment on claim; retry exhaustion
+and expired final attempts become queryable `DEAD` rows, while stale eligible attempts are reclaimed
+under row locks and requeued with bounded backoff. Concurrent tests prove active dedupe is scoped by
+workspace and no job is claimed twice.
 
 From the repository root:
 
