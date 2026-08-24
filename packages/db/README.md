@@ -24,6 +24,11 @@ at `0.01`; other currencies require an explicit row. Active reconciliation valid
 currency/amount, a two-day date window, effective bill-payment role, deposit-account outflow, and a
 confirming actor for user decisions. Partial unique indexes prevent one payment or bank transaction
 from participating in multiple active matches, while candidates/rejections remain retained.
+PF-030 implements versioned AES-256-GCM payload encryption with exact canonical JSON hashing and
+row/workspace/provider identity bound as authenticated data. It supports active-key writes,
+mixed-version reads, verified re-encryption, referenced-key checks, and guarded retirement. The
+append-only rotation migration records canonicalization versions, enforces 12-byte nonces and
+16-byte tags, and adds durable resumable progress in `encryption_rotation_run`.
 
 From the repository root:
 
@@ -42,7 +47,7 @@ requires `DATABASE_URL` and rejects `LOCAL_DATABASE_URL`.
 uses reserved example data and refuses to run when `NODE_ENV=production`.
 
 The integration tests create uniquely named empty databases, apply the complete migration set twice,
-verify constraints and the synthetic seed, exercise every migration-bearing PF-011 through PF-017
+verify constraints and the synthetic seed, exercise every migration-bearing PF-011 through PF-019
 upgrade path, and prove
 provider identity scope, cross-workspace rejection, encrypted-envelope checks, webhook idempotency,
 active queue dedupe, lease-state constraints, category visibility/immutability, exact numeric
@@ -56,9 +61,9 @@ drop databases.
 PF-015 replaces PF-014's temporary null-only series guard with composite workspace foreign keys to
 the installment and recurring parents.
 
-Provider raw objects and webhook bodies are stored only as versioned encrypted envelopes. The schema
-does not implement encryption or provider calls; later write paths must use the accepted AES-256-GCM
-keyring and authenticated-context contract from ADR 0007.
+Provider raw objects and webhook bodies are stored only as versioned encrypted envelopes. The
+encryption service implements ADR 0007, but no provider repository writes those envelopes until the
+subsequent import tickets.
 
 Drizzle `0.45.x` currently has third-party declaration errors under TypeScript 6 when dependency
 declarations are checked directly. This package therefore enables `skipLibCheck` locally while all

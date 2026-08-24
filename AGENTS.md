@@ -38,9 +38,12 @@ record; the versioned implementation plan is the canonical specification.
 - PF-026 completes Phase 2 with an explicit Pluggy Item lifecycle mapper covering transitive,
   success/partial-success, user-input/action, credential/consent, provider-error, deletion,
   precedence-conflict, and unknown fail-closed cases.
-- The next ticket is PF-030, which implements versioned application encryption. Do not imply that
-  the import pipeline, queue worker behavior, product authentication, rule evaluation, analytics
-  services, general repositories, or product UI already exist.
+- PF-030 starts Phase 3 with versioned context-bound AES-256-GCM encryption, exact canonical JSON
+  hashing, active-key writes/mixed-version reads, fail-closed tamper and retirement checks, strict
+  database envelopes, and durable resumable rotation progress.
+- The next ticket is PF-031, which adds the explicit-workspace safe-label connection discovery
+  command. Do not imply that account/transaction/bill import, queue worker behavior, product
+  authentication, rule evaluation, analytics services, general repositories, or product UI exist.
 - ADRs 0008, 0009, and 0010 define mandatory credential, workspace, provider-identity, signed-amount,
   and bill-reconciliation behavior for subsequent tickets.
 - Update this section and the root README together whenever a PF ticket or phase is completed.

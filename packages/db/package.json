@@ -17,13 +17,14 @@
     "db:migrate": "tsx src/migrate-cli.ts",
     "db:seed": "tsx src/seed-cli.ts",
     "lint": "eslint src --max-warnings=0",
-    "test": "vitest run src/migration-journal.test.ts src/seed.test.ts",
+    "test": "vitest run src/migration-journal.test.ts src/seed.test.ts src/encryption.test.ts",
     "test:integration": "vitest run src/migrations.integration.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@cashcount/config": "workspace:*",
     "drizzle-orm": "0.45.2",
+    "lossless-json": "4.3.1",
     "pg": "8.23.0"
   },
   "devDependencies": {

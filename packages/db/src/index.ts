@@ -2,6 +2,19 @@ export const packageName = '@cashcount/db' as const;
 
 export { createDatabaseClient, type DatabaseClient } from './client.js';
 export { defaultMigrationsFolder, runMigrations } from './migrations.js';
+export {
+  canonicalJsonSha256,
+  canonicalizeJson,
+  EncryptionConfigurationError,
+  EncryptionKeyRetirementError,
+  MissingEncryptionKeyError,
+  PayloadAuthenticationError,
+  PayloadEncryptionService,
+  payloadCanonicalizationVersion,
+  type EncryptedPayloadEnvelope,
+  type PayloadEncryptionContext,
+  type PayloadEncryptionServiceOptions,
+} from './encryption.js';
 export { seedSyntheticIdentity, syntheticIdentitySeed } from './seed.js';
 export {
   financialRoles,
@@ -28,6 +41,7 @@ export {
   creditCardBill,
   creditCardBillFinanceCharge,
   creditCardBillPayment,
+  encryptionRotationRun,
   financialAccount,
   financialTransaction,
   installmentSeries,

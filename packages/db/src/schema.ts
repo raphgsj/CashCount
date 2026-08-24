@@ -181,6 +181,9 @@ export const providerRawObject = pgTable(
     payloadTag: bytea('payload_tag').notNull(),
     keyVersion: integer('key_version').notNull(),
     payloadSha256: char('payload_sha256', { length: 64 }).notNull(),
+    canonicalizationVersion: text('canonicalization_version')
+      .notNull()
+      .default('CASHCOUNT_JSON_V1'),
     sourceEventId: text('source_event_id'),
     observedAt: timestamp('observed_at', { withTimezone: true }).notNull(),
     providerUpdatedAt: timestamp('provider_updated_at', { withTimezone: true }),
@@ -205,10 +208,14 @@ export const providerRawObject = pgTable(
     ),
     check(
       'provider_raw_object_envelope_nonempty_ck',
-      sql`octet_length(${table.payloadCiphertext}) > 0 and octet_length(${table.payloadIv}) > 0 and octet_length(${table.payloadTag}) > 0`,
+      sql`octet_length(${table.payloadCiphertext}) > 0 and octet_length(${table.payloadIv}) = 12 and octet_length(${table.payloadTag}) = 16`,
     ),
     check('provider_raw_object_key_version_ck', sql`${table.keyVersion} > 0`),
     check('provider_raw_object_payload_sha256_ck', sql`${table.payloadSha256} ~ '^[0-9a-f]{64}$'`),
+    check(
+      'provider_raw_object_canonicalization_version_ck',
+      sql`length(trim(${table.canonicalizationVersion})) between 1 and 100`,
+    ),
   ],
 );
 
@@ -230,6 +237,9 @@ export const webhookEvent = pgTable(
     payloadTag: bytea('payload_tag').notNull(),
     keyVersion: integer('key_version').notNull(),
     payloadSha256: char('payload_sha256', { length: 64 }).notNull(),
+    canonicalizationVersion: text('canonicalization_version')
+      .notNull()
+      .default('CASHCOUNT_JSON_V1'),
     receivedAt: timestamp('received_at', { withTimezone: true }).defaultNow().notNull(),
     status: text('status').notNull().default('RECEIVED'),
     processedAt: timestamp('processed_at', { withTimezone: true }),
@@ -251,10 +261,14 @@ export const webhookEvent = pgTable(
     check('webhook_event_event_type_nonempty_ck', sql`length(trim(${table.eventType})) > 0`),
     check(
       'webhook_event_envelope_nonempty_ck',
-      sql`octet_length(${table.payloadCiphertext}) > 0 and octet_length(${table.payloadIv}) > 0 and octet_length(${table.payloadTag}) > 0`,
+      sql`octet_length(${table.payloadCiphertext}) > 0 and octet_length(${table.payloadIv}) = 12 and octet_length(${table.payloadTag}) = 16`,
     ),
     check('webhook_event_key_version_ck', sql`${table.keyVersion} > 0`),
     check('webhook_event_payload_sha256_ck', sql`${table.payloadSha256} ~ '^[0-9a-f]{64}$'`),
+    check(
+      'webhook_event_canonicalization_version_ck',
+      sql`length(trim(${table.canonicalizationVersion})) between 1 and 100`,
+    ),
     check(
       'webhook_event_workspace_scope_ck',
       sql`(${table.workspaceId} is null and ${table.status} = 'UNMAPPED') or ${table.workspaceId} is not null`,
@@ -1586,5 +1600,53 @@ export const auditEvent = pgTable(
     check('audit_event_event_type_nonempty_ck', sql`length(trim(${table.eventType})) > 0`),
     check('audit_event_details_shape_ck', sql`jsonb_typeof(${table.details}) = 'object'`),
     check('audit_event_details_length_ck', sql`octet_length(${table.details}::text) <= 20000`),
+  ],
+);
+
+export const encryptionRotationRun = pgTable(
+  'encryption_rotation_run',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    fromKeyVersion: integer('from_key_version').notNull(),
+    toKeyVersion: integer('to_key_version').notNull(),
+    status: text('status').notNull().default('PENDING'),
+    currentTable: text('current_table'),
+    lastProcessedId: uuid('last_processed_id'),
+    rowsExamined: bigint('rows_examined', { mode: 'bigint' })
+      .notNull()
+      .default(sql`0`),
+    rowsReencrypted: bigint('rows_reencrypted', { mode: 'bigint' })
+      .notNull()
+      .default(sql`0`),
+    startedAt: timestamp('started_at', { withTimezone: true }),
+    heartbeatAt: timestamp('heartbeat_at', { withTimezone: true }),
+    finishedAt: timestamp('finished_at', { withTimezone: true }),
+    lastErrorSummary: text('last_error_summary'),
+    ...timestamps(),
+  },
+  (table) => [
+    index('encryption_rotation_run_status_created_idx').on(table.status, table.createdAt),
+    check('encryption_rotation_run_from_key_version_ck', sql`${table.fromKeyVersion} > 0`),
+    check('encryption_rotation_run_to_key_version_ck', sql`${table.toKeyVersion} > 0`),
+    check(
+      'encryption_rotation_run_distinct_versions_ck',
+      sql`${table.fromKeyVersion} <> ${table.toKeyVersion}`,
+    ),
+    check(
+      'encryption_rotation_run_status_ck',
+      sql`${table.status} in ('PENDING', 'RUNNING', 'PAUSED', 'SUCCEEDED', 'FAILED')`,
+    ),
+    check(
+      'encryption_rotation_run_current_table_ck',
+      sql`${table.currentTable} is null or ${table.currentTable} in ('provider_raw_object', 'webhook_event')`,
+    ),
+    check(
+      'encryption_rotation_run_progress_ck',
+      sql`${table.rowsExamined} >= 0 and ${table.rowsReencrypted} >= 0 and ${table.rowsReencrypted} <= ${table.rowsExamined}`,
+    ),
+    check(
+      'encryption_rotation_run_last_error_summary_length_ck',
+      sql`${table.lastErrorSummary} is null or length(${table.lastErrorSummary}) <= 1000`,
+    ),
   ],
 );

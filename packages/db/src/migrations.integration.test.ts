@@ -162,13 +162,13 @@ describe('database migrations', () => {
             client,
             'select count(*)::integer as count from drizzle.__drizzle_migrations',
           ),
-        ).toBe(8);
+        ).toBe(9);
         expect(
           await queryCount(
             client,
             "select count(*)::integer as count from pg_tables where schemaname = 'public'",
           ),
-        ).toBe(28);
+        ).toBe(29);
         expect(
           await queryCount(
             client,
@@ -187,6 +187,19 @@ describe('database migrations', () => {
             "select count(*)::integer as count from pg_extension where extname = 'citext'",
           ),
         ).toBe(1);
+        await client.query(
+          `insert into encryption_rotation_run (from_key_version, to_key_version, status, current_table, rows_examined, rows_reencrypted) values (1, 2, 'PAUSED', 'provider_raw_object', 10, 4)`,
+        );
+        await expect(
+          client.query(
+            `insert into encryption_rotation_run (from_key_version, to_key_version) values (2, 2)`,
+          ),
+        ).rejects.toMatchObject({ code: '23514' });
+        await expect(
+          client.query(
+            `insert into encryption_rotation_run (from_key_version, to_key_version, rows_examined, rows_reencrypted) values (1, 2, 1, 2)`,
+          ),
+        ).rejects.toMatchObject({ code: '23514' });
         expect(
           await queryCount(
             client,
@@ -266,7 +279,8 @@ describe('database migrations', () => {
       const connectionA = '40000000-0000-4000-8000-000000000001';
       const connectionB = '40000000-0000-4000-8000-000000000002';
       const sha256 = 'a'.repeat(64);
-      const envelopeSql = "decode('01', 'hex'), decode('02', 'hex'), decode('03', 'hex')";
+      const envelopeSql =
+        "decode('01', 'hex'), decode(repeat('02', 12), 'hex'), decode(repeat('03', 16), 'hex')";
 
       try {
         await client.connect();
@@ -423,7 +437,8 @@ describe('database migrations', () => {
       const billPaymentA = 'b0000000-0000-4000-8000-000000000001';
       const sha256 = 'a'.repeat(64);
       const customCode = `custom.${customCategoryA}`;
-      const envelopeSql = "decode('01', 'hex'), decode('02', 'hex'), decode('03', 'hex')";
+      const envelopeSql =
+        "decode('01', 'hex'), decode(repeat('02', 12), 'hex'), decode(repeat('03', 16), 'hex')";
 
       try {
         await client.connect();
@@ -1843,6 +1858,7 @@ describe('database migrations', () => {
     { entryCount: 5, expectedTables: 27, ticket: 'PF-015' },
     { entryCount: 6, expectedTables: 27, ticket: 'PF-016' },
     { entryCount: 7, expectedTables: 27, ticket: 'PF-017' },
+    { entryCount: 8, expectedTables: 28, ticket: 'PF-019' },
   ])(
     'upgrades a $ticket database without reapplying prior migrations',
     async ({ entryCount, expectedTables }) => {
@@ -1883,13 +1899,13 @@ describe('database migrations', () => {
                 afterUpgradeClient,
                 'select count(*)::integer as count from drizzle.__drizzle_migrations',
               ),
-            ).toBe(8);
+            ).toBe(9);
             expect(
               await queryCount(
                 afterUpgradeClient,
                 "select count(*)::integer as count from pg_tables where schemaname = 'public'",
               ),
-            ).toBe(28);
+            ).toBe(29);
             expect(
               await queryCount(
                 afterUpgradeClient,

@@ -57,6 +57,13 @@
       "when": 1787529600007,
       "tag": "0007_bill_reconciliation",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1787529613731,
+      "tag": "0008_encryption_rotation",
+      "breakpoints": true
     }
   ]
 }
