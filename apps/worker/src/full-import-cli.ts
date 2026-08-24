@@ -5,6 +5,7 @@ import {
   createDatabaseClient,
   PayloadEncryptionService,
   TransactionImportRepository,
+  TransactionReplacementRepository,
 } from '@cashcount/db';
 import {
   PluggyApiKeyProvider,
@@ -43,6 +44,7 @@ async function main(): Promise<void> {
       encryption,
       provider,
       providerConnectionId,
+      replacementDetector: new TransactionReplacementRepository(databaseClient.pool),
       transactionPersistence: new TransactionImportRepository(databaseClient.database),
       workspaceId,
     });

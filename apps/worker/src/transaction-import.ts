@@ -52,8 +52,13 @@ export interface ImportTransactionsOptions {
   persistence: TransactionImportPersistence;
   provider: TransactionImportProvider;
   providerConnectionId: string;
+  replacementDetector?: TransactionReplacementDetector;
   triggerType: TransactionSyncTrigger;
   workspaceId: string;
+}
+
+export interface TransactionReplacementDetector {
+  detectForSync(workspaceId: string, syncRunId: string, detectedAt?: Date): Promise<unknown>;
 }
 
 export class TransactionCursorInvariantError extends Error {
@@ -84,6 +89,7 @@ export async function importTransactions(
     options.triggerType,
     now(),
   );
+  let completed: TransactionSyncResult;
 
   try {
     for (const account of started.accounts) {
@@ -125,7 +131,11 @@ export async function importTransactions(
         now(),
       );
     }
-    return options.persistence.completeSync(options.workspaceId, started.syncRunId, now());
+    completed = await options.persistence.completeSync(
+      options.workspaceId,
+      started.syncRunId,
+      now(),
+    );
   } catch (error) {
     try {
       await options.persistence.failSync(options.workspaceId, started.syncRunId, now());
@@ -134,4 +144,6 @@ export async function importTransactions(
     }
     throw error;
   }
+  await options.replacementDetector?.detectForSync(options.workspaceId, started.syncRunId, now());
+  return completed;
 }

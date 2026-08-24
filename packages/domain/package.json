@@ -13,7 +13,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "lint": "eslint src --max-warnings=0",
-    "test": "vitest run src/money.test.ts src/dates.test.ts src/transaction-policy.test.ts",
+    "test": "vitest run src/money.test.ts src/dates.test.ts src/transaction-policy.test.ts src/replacement-policy.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

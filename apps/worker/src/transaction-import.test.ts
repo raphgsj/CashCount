@@ -97,6 +97,7 @@ describe('transaction import orchestration', () => {
       }),
     };
     const observedAt = new Date('2026-08-23T13:00:00.000Z');
+    const replacementDetector = { detectForSync: vi.fn(async () => undefined) };
 
     await expect(
       importTransactions({
@@ -105,6 +106,7 @@ describe('transaction import orchestration', () => {
         persistence: storage,
         provider,
         providerConnectionId,
+        replacementDetector,
         triggerType: 'INITIAL',
         workspaceId,
       }),
@@ -125,6 +127,11 @@ describe('transaction import orchestration', () => {
       observedAt,
     );
     expect(storage.completeSync).toHaveBeenCalledWith(workspaceId, syncRunId, observedAt);
+    expect(replacementDetector.detectForSync).toHaveBeenCalledWith(
+      workspaceId,
+      syncRunId,
+      observedAt,
+    );
     expect(storage.failSync).not.toHaveBeenCalled();
   });
 

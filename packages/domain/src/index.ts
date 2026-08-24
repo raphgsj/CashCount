@@ -31,6 +31,14 @@ export {
   type SignedAmountEvidence,
 } from './money.js';
 export {
+  scoreTransactionReplacement,
+  transactionReplacementAutoConfirmThreshold,
+  transactionReplacementDateWindowDays,
+  transactionReplacementPolicyVersion,
+  type ReplacementTransactionFacts,
+  type TransactionReplacementScore,
+} from './replacement-policy.js';
+export {
   accountTypes,
   calculateTransactionEffects,
   classifyTransaction,

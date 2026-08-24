@@ -42,6 +42,10 @@ observed provider date span, preserves `USER_EXTENDED_HISTORY`, and exposes a wo
 range query with structured `INCOMPLETE_HISTORY` warnings before the earliest known date. The same
 gate hardens concurrent first user-state writes so unique races surface as typed optimistic
 conflicts rather than raw database errors.
+PF-037 adds same-sync provider-replacement candidates under a versioned deterministic policy. It
+retains both provider rows, auto-confirms only unique high-confidence matches, keeps weak/competing
+matches reviewable, and transfers user state/tags only into an empty successor while recording one
+idempotent revision and audit event.
 
 From the repository root:
 

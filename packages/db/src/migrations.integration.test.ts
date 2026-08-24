@@ -37,6 +37,11 @@ import {
   TransactionUserStateConflictError,
   TransactionUserStateRepository,
 } from './transaction-user-state-repository.js';
+import {
+  TransactionReplacementInvariantError,
+  TransactionReplacementRepository,
+  TransactionReplacementTransferConflictError,
+} from './transaction-replacement-repository.js';
 
 interface CountResult {
   count: number;
@@ -987,6 +992,391 @@ describe('database migrations', () => {
         ]);
       } finally {
         await client.end();
+      }
+    });
+  }, 30_000);
+
+  it('detects transaction replacements and transfers confirmed user state safely', async () => {
+    await withTemporaryDatabase(async (connectionString) => {
+      await runMigrations(connectionString);
+      await seedSyntheticIdentity(connectionString, 'test');
+
+      const client = new Client({ connectionString });
+      const pool = new Pool({ connectionString });
+      pool.on('error', () => undefined);
+      const workspaceId = syntheticIdentitySeed.workspace.id;
+      const connectionId = '40000000-0000-4000-8000-000000000037';
+      const accountId = '60000000-0000-4000-8000-000000000037';
+      const categoryId = '80000000-0000-4000-8000-000000000037';
+      const merchantId = '90000000-0000-4000-8000-000000000037';
+      const tagId = 'e0000000-0000-4000-8000-000000000037';
+      const repository = new TransactionReplacementRepository(pool);
+      const insertRun = async (
+        id: string,
+        startedAt: string,
+        finishedAt: string,
+      ): Promise<void> => {
+        await client.query(
+          `insert into sync_run (
+             id, workspace_id, provider_connection_id, trigger_type, status,
+             started_at, finished_at
+           ) values ($1, $2, $3, 'MANUAL', 'SUCCEEDED', $4, $5)`,
+          [id, workspaceId, connectionId, startedAt, finishedAt],
+        );
+      };
+      const insertReplacementTransaction = async (input: {
+        amount?: string;
+        createdAt: string;
+        deletedAt?: string;
+        description: string;
+        id: string;
+        localDate?: string;
+        status: 'DELETED' | 'POSTED';
+      }): Promise<void> => {
+        await client.query(
+          `insert into financial_transaction (
+             id, workspace_id, financial_account_id, provider, provider_transaction_id,
+             status, provider_type, provider_amount_signed, provider_currency,
+             account_currency, system_direction, system_financial_role,
+             provider_transaction_at, transaction_local_date, description_original,
+             description_normalized, dedupe_fingerprint, created_at, updated_at, deleted_at
+           ) values (
+             $1::uuid, $2, $3, 'PLUGGY', $1::text, $4, 'DEBIT', $5, 'BRL', 'BRL',
+             'OUTFLOW', 'PURCHASE', $6, $7, $8, $8, $9, $6, $6, $10
+           )`,
+          [
+            input.id,
+            workspaceId,
+            accountId,
+            input.status,
+            input.amount ?? '42.420000',
+            input.createdAt,
+            input.localDate ?? '2026-08-23',
+            input.description,
+            input.id.replaceAll('-', '').slice(0, 64).padEnd(64, '0'),
+            input.deletedAt ?? null,
+          ],
+        );
+      };
+
+      try {
+        await client.connect();
+        await client.query(
+          `insert into provider_connection (
+             id, workspace_id, provider, external_connection_id, external_connector_id, display_name
+           ) values ($1, $2, 'PLUGGY', 'replacement-item', '601', 'Synthetic Fixture Bank')`,
+          [connectionId, workspaceId],
+        );
+        await client.query(
+          `insert into financial_account (
+             id, workspace_id, provider_connection_id, provider, external_account_id,
+             account_type, name, institution_name, currency
+           ) values ($1, $2, $3, 'PLUGGY', 'replacement-account', 'CHECKING',
+             'Synthetic replacement account', 'Synthetic Fixture Bank', 'BRL')`,
+          [accountId, workspaceId, connectionId],
+        );
+        await client.query(
+          `insert into category (id, workspace_id, code, kind, name_en, name_pt_br)
+           values ($1, $2, 'custom.80000000-0000-4000-8000-000000000037',
+             'EXPENSE', 'Replacement', 'Substituição')`,
+          [categoryId, workspaceId],
+        );
+        await client.query(
+          `insert into merchant (id, workspace_id, canonical_name, normalized_key, review_status)
+           values ($1, $2, 'Replacement Merchant', 'replacement merchant', 'CONFIRMED')`,
+          [merchantId, workspaceId],
+        );
+        await client.query(
+          `insert into tag (id, workspace_id, name, normalized_name)
+           values ($1, $2, 'Replacement tag', 'replacement tag')`,
+          [tagId, workspaceId],
+        );
+
+        const autoRunId = '41000000-0000-4000-8000-000000000037';
+        const predecessorId = 'a1000000-0000-4000-8000-000000000037';
+        const successorId = 'a2000000-0000-4000-8000-000000000037';
+        await insertRun(autoRunId, '2026-08-23T10:00:00.000Z', '2026-08-23T11:00:00.000Z');
+        await insertReplacementTransaction({
+          createdAt: '2026-08-22T09:00:00.000Z',
+          deletedAt: '2026-08-23T10:10:00.000Z',
+          description: 'synthetic replacement candidate',
+          id: predecessorId,
+          status: 'DELETED',
+        });
+        await insertReplacementTransaction({
+          createdAt: '2026-08-23T10:20:00.000Z',
+          description: 'synthetic replacement candidate',
+          id: successorId,
+          status: 'POSTED',
+        });
+        await client.query(
+          `insert into transaction_user_state (
+             financial_transaction_id, workspace_id, category_override_enabled,
+             category_id_override, merchant_override_enabled, merchant_id_override,
+             financial_role_override_enabled, financial_role_override,
+             excluded_from_spend_override, notes, review_status, updated_by_actor_type
+           ) values ($1, $2, true, $3, true, $4, true, 'FEE', false,
+             'Synthetic continuity note', 'CONFIRMED', 'USER')`,
+          [predecessorId, workspaceId, categoryId, merchantId],
+        );
+        await client.query(
+          `insert into transaction_tag (workspace_id, financial_transaction_id, tag_id)
+           values ($1, $2, $3)`,
+          [workspaceId, predecessorId, tagId],
+        );
+
+        await expect(
+          repository.detectForSync(workspaceId, autoRunId, new Date('2026-08-23T11:00:00.000Z')),
+        ).resolves.toEqual({
+          autoConfirmed: 1,
+          candidatesInserted: 1,
+          candidatesSeen: 1,
+          needsReview: 0,
+          stateTransfersCompleted: 1,
+        });
+        const autoLink = await client.query<{
+          confidence: string;
+          evidence: Record<string, unknown>;
+          id: string;
+          status: string;
+        }>(
+          `select id, status, confidence, evidence from transaction_identity_link
+           where workspace_id = $1 and predecessor_transaction_id = $2`,
+          [workspaceId, predecessorId],
+        );
+        expect(autoLink.rows[0]).toMatchObject({
+          confidence: '1.0000',
+          evidence: {
+            amountCompatible: true,
+            policyVersion: 'REPLACEMENT_V1',
+            predecessorCandidateCount: 1,
+            successorCandidateCount: 1,
+          },
+          status: 'AUTO_CONFIRMED',
+        });
+        const linkId = autoLink.rows[0]?.id;
+        if (linkId === undefined) throw new Error('Expected an auto-confirmed link.');
+        const transferredState = await client.query<{
+          category_id_override: string;
+          excluded_from_spend_override: boolean;
+          financial_role_override: string;
+          merchant_id_override: string;
+          notes: string;
+          review_status: string;
+          version: number;
+        }>(
+          `select category_id_override, merchant_id_override, financial_role_override,
+                  excluded_from_spend_override, notes, review_status, version
+           from transaction_user_state where workspace_id = $1 and financial_transaction_id = $2`,
+          [workspaceId, successorId],
+        );
+        expect(transferredState.rows[0]).toEqual({
+          category_id_override: categoryId,
+          excluded_from_spend_override: false,
+          financial_role_override: 'FEE',
+          merchant_id_override: merchantId,
+          notes: 'Synthetic continuity note',
+          review_status: 'CONFIRMED',
+          version: 1,
+        });
+        expect(
+          await queryCount(
+            client,
+            `select count(*)::integer as count from transaction_tag
+             where workspace_id = '${workspaceId}' and tag_id = '${tagId}'`,
+          ),
+        ).toBe(2);
+        expect(
+          await queryCount(
+            client,
+            `select count(*)::integer as count from audit_event
+             where target_id = '${linkId}' and event_type = 'TRANSACTION_REPLACEMENT_STATE_TRANSFERRED'`,
+          ),
+        ).toBe(1);
+        expect(
+          await queryCount(
+            client,
+            `select count(*)::integer as count from transaction_revision
+             where financial_transaction_id = '${successorId}' and change_type = 'MERGE'`,
+          ),
+        ).toBe(1);
+        await expect(
+          repository.detectForSync(workspaceId, autoRunId, new Date('2026-08-23T11:30:00.000Z')),
+        ).resolves.toMatchObject({
+          candidatesInserted: 0,
+          candidatesSeen: 1,
+          stateTransfersCompleted: 0,
+        });
+        expect(
+          await queryCount(
+            client,
+            `select count(*)::integer as count from transaction_identity_link where workspace_id = '${workspaceId}'`,
+          ),
+        ).toBe(1);
+        expect(
+          await queryCount(
+            client,
+            `select count(*)::integer as count from transaction_identity_link
+             where id = '${linkId}' and status = 'AUTO_CONFIRMED'`,
+          ),
+        ).toBe(1);
+
+        const reviewRunId = '42000000-0000-4000-8000-000000000037';
+        const reviewPredecessorId = 'b1000000-0000-4000-8000-000000000037';
+        const reviewSuccessorId = 'b2000000-0000-4000-8000-000000000037';
+        await insertRun(reviewRunId, '2026-08-23T12:00:00.000Z', '2026-08-23T13:00:00.000Z');
+        await insertReplacementTransaction({
+          createdAt: '2026-08-22T09:00:00.000Z',
+          deletedAt: '2026-08-23T12:10:00.000Z',
+          description: 'original provider description',
+          id: reviewPredecessorId,
+          status: 'DELETED',
+        });
+        await insertReplacementTransaction({
+          createdAt: '2026-08-23T12:20:00.000Z',
+          description: 'corrected replacement description',
+          id: reviewSuccessorId,
+          status: 'POSTED',
+        });
+        await client.query(
+          `insert into transaction_user_state (
+             financial_transaction_id, workspace_id, notes, review_status, updated_by_actor_type
+           ) values ($1, $2, 'Predecessor review note', 'NEEDS_REVIEW', 'USER')`,
+          [reviewPredecessorId, workspaceId],
+        );
+        const reviewDetection = await repository.detectForSync(
+          workspaceId,
+          reviewRunId,
+          new Date('2026-08-23T13:00:00.000Z'),
+        );
+        expect(reviewDetection).toMatchObject({ autoConfirmed: 0, needsReview: 1 });
+        const reviewLink = await client.query<{ id: string; status: string }>(
+          `select id, status from transaction_identity_link
+           where workspace_id = $1 and predecessor_transaction_id = $2`,
+          [workspaceId, reviewPredecessorId],
+        );
+        const reviewLinkId = reviewLink.rows[0]?.id;
+        if (reviewLinkId === undefined) throw new Error('Expected a review link.');
+        await expect(
+          repository.reviewCandidate(
+            workspaceId,
+            reviewLinkId,
+            'CONFIRM',
+            'synthetic-owner',
+            new Date('2026-08-23T13:10:00.000Z'),
+          ),
+        ).resolves.toMatchObject({
+          alreadyTransferred: false,
+          fieldsTransferred: expect.any(Array),
+        });
+        expect(
+          await queryCount(
+            client,
+            `select count(*)::integer as count from transaction_identity_link
+             where id = '${reviewLinkId}' and status = 'USER_CONFIRMED'`,
+          ),
+        ).toBe(1);
+
+        const conflictRunId = '43000000-0000-4000-8000-000000000037';
+        const conflictPredecessorId = 'c1000000-0000-4000-8000-000000000037';
+        const conflictSuccessorId = 'c2000000-0000-4000-8000-000000000037';
+        await insertRun(conflictRunId, '2026-08-23T14:00:00.000Z', '2026-08-23T15:00:00.000Z');
+        await insertReplacementTransaction({
+          createdAt: '2026-08-22T09:00:00.000Z',
+          deletedAt: '2026-08-23T14:10:00.000Z',
+          description: 'conflict predecessor',
+          id: conflictPredecessorId,
+          status: 'DELETED',
+        });
+        await insertReplacementTransaction({
+          createdAt: '2026-08-23T14:20:00.000Z',
+          description: 'different conflict successor',
+          id: conflictSuccessorId,
+          status: 'POSTED',
+        });
+        await client.query(
+          `insert into transaction_user_state (
+             financial_transaction_id, workspace_id, notes, review_status, updated_by_actor_type
+           ) values ($1, $2, 'Existing successor decision', 'CONFIRMED', 'USER')`,
+          [conflictSuccessorId, workspaceId],
+        );
+        await repository.detectForSync(
+          workspaceId,
+          conflictRunId,
+          new Date('2026-08-23T15:00:00.000Z'),
+        );
+        const conflictLink = await client.query<{ id: string }>(
+          `select id from transaction_identity_link
+           where workspace_id = $1 and predecessor_transaction_id = $2`,
+          [workspaceId, conflictPredecessorId],
+        );
+        const conflictLinkId = conflictLink.rows[0]?.id;
+        if (conflictLinkId === undefined) throw new Error('Expected a conflicting review link.');
+        await expect(
+          repository.reviewCandidate(workspaceId, conflictLinkId, 'CONFIRM', 'synthetic-owner'),
+        ).rejects.toBeInstanceOf(TransactionReplacementTransferConflictError);
+        await expect(
+          repository.reviewCandidate(workspaceId, conflictLinkId, 'REJECT', 'synthetic-owner'),
+        ).resolves.toBeNull();
+        await expect(
+          repository.reviewCandidate(workspaceId, conflictLinkId, 'REJECT', 'synthetic-owner'),
+        ).resolves.toBeNull();
+        expect(
+          await queryCount(
+            client,
+            `select count(*)::integer as count from audit_event
+             where target_id = '${conflictLinkId}' and event_type = 'TRANSACTION_REPLACEMENT_REJECTED'`,
+          ),
+        ).toBe(1);
+        await expect(
+          repository.reviewCandidate(randomUUID(), conflictLinkId, 'REJECT', 'synthetic-owner'),
+        ).rejects.toBeInstanceOf(TransactionReplacementInvariantError);
+
+        const ambiguousRunId = '44000000-0000-4000-8000-000000000037';
+        const ambiguousPredecessorId = 'd1000000-0000-4000-8000-000000000037';
+        await insertRun(ambiguousRunId, '2026-08-23T16:00:00.000Z', '2026-08-23T17:00:00.000Z');
+        await insertReplacementTransaction({
+          createdAt: '2026-08-22T09:00:00.000Z',
+          deletedAt: '2026-08-23T16:10:00.000Z',
+          description: 'ambiguous replacement',
+          id: ambiguousPredecessorId,
+          status: 'DELETED',
+        });
+        for (const [id, createdAt] of [
+          ['d2000000-0000-4000-8000-000000000037', '2026-08-23T16:20:00.000Z'],
+          ['d3000000-0000-4000-8000-000000000037', '2026-08-23T16:21:00.000Z'],
+        ] as const) {
+          await insertReplacementTransaction({
+            createdAt,
+            description: 'ambiguous replacement',
+            id,
+            status: 'POSTED',
+          });
+        }
+        await expect(
+          repository.detectForSync(
+            workspaceId,
+            ambiguousRunId,
+            new Date('2026-08-23T17:00:00.000Z'),
+          ),
+        ).resolves.toMatchObject({
+          autoConfirmed: 0,
+          candidatesInserted: 2,
+          candidatesSeen: 2,
+          needsReview: 2,
+          stateTransfersCompleted: 0,
+        });
+        expect(
+          await queryCount(
+            client,
+            `select count(*)::integer as count from transaction_identity_link
+             where predecessor_transaction_id = '${ambiguousPredecessorId}'
+               and status = 'NEEDS_REVIEW'`,
+          ),
+        ).toBe(2);
+      } finally {
+        await client.end();
+        await pool.end();
       }
     });
   }, 30_000);

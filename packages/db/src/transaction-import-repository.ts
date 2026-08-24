@@ -523,12 +523,14 @@ export class TransactionImportRepository {
           }
           await transaction.insert(financialTransaction).values({
             ...incomingComparable,
+            createdAt: observedAt,
             duplicateReviewStatus,
             financialAccountId: account.financialAccountId,
             latestRawObjectId,
             provider: 'PLUGGY',
             providerTransactionId,
             systemFinancialRoleSource: 'HEURISTIC',
+            updatedAt: observedAt,
             workspaceId,
           });
           transactionsInserted += 1;

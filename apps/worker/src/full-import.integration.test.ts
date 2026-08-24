@@ -10,6 +10,7 @@ import {
   seedSyntheticIdentity,
   syntheticIdentitySeed,
   TransactionImportRepository,
+  TransactionReplacementRepository,
   TransactionUserStateRepository,
 } from '@cashcount/db';
 import {
@@ -110,6 +111,7 @@ describe('full import regression', () => {
           encryption,
           provider,
           providerConnectionId,
+          replacementDetector: new TransactionReplacementRepository(client.pool),
           transactionPersistence: new TransactionImportRepository(client.database),
           workspaceId,
         };

@@ -59,9 +59,12 @@ record; the versioned implementation plan is the canonical specification.
 - PF-036 adds conservative per-account provider-history assessment, owner-extended coverage
   preservation, and workspace-scoped range warnings whenever a request predates actual known
   coverage. Concurrent first user-state writes now resolve losers as typed optimistic conflicts.
-- The next ticket is PF-037, which adds provider transaction replacement detection and safe
-  confirmed continuity transfer. Do not imply that queue worker behavior, product authentication,
-  rule evaluation, analytics services, general repositories, or product UI exist.
+- PF-037 completes Phase 3 with versioned deterministic replacement scoring, same-sync eligibility,
+  ambiguity-aware review links, explicit confirmation/rejection, and idempotent conflict-safe
+  transfer of user state/tags with revision and audit evidence.
+- The next ticket is PF-040, which adds the webhook ingestion route. Do not imply that a durable
+  worker process, product authentication, rule evaluation, analytics services, general repositories,
+  or product UI exist.
 - ADRs 0008, 0009, and 0010 define mandatory credential, workspace, provider-identity, signed-amount,
   and bill-reconciliation behavior for subsequent tickets.
 - Update this section and the root README together whenever a PF ticket or phase is completed.

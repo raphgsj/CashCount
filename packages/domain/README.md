@@ -18,4 +18,9 @@ evidence-only, matched finance charges count through the transaction once, unres
 remain zero pending review, and incompatible currencies produce structured warnings without a
 fabricated conversion.
 
-Provider DTO validation and provider-specific mapping remain later ticket work.
+PF-037 adds the provider-neutral `REPLACEMENT_V1` continuity scorer: exact currency/amount and
+account compatibility, a three-day date window, non-conflicting card/installment/bill evidence,
+description similarity, and a `0.9500` auto-confirm threshold that still requires repository-level
+uniqueness.
+
+Provider DTO validation and provider-specific mapping remain owned by the provider packages.

@@ -49,6 +49,14 @@ export {
   type TransactionSyncTrigger,
 } from './transaction-import-repository.js';
 export {
+  TransactionReplacementInvariantError,
+  TransactionReplacementRepository,
+  TransactionReplacementTransferConflictError,
+  type TransactionReplacementDetectionResult,
+  type TransactionReplacementStatus,
+  type TransactionReplacementTransferResult,
+} from './transaction-replacement-repository.js';
+export {
   financialRoles,
   TransactionNotFoundError,
   TransactionUserStateConflictError,

@@ -16,6 +16,7 @@ import {
   importTransactions,
   type TransactionImportPersistence,
   type TransactionImportProvider,
+  type TransactionReplacementDetector,
 } from './transaction-import.js';
 
 const workspaceIdPattern =
@@ -37,6 +38,7 @@ export interface RunFullImportOptions {
   now?: () => Date;
   provider: FullImportProvider;
   providerConnectionId: string;
+  replacementDetector?: TransactionReplacementDetector;
   transactionPersistence: TransactionImportPersistence;
   triggerType?: TransactionSyncTrigger;
   workspaceId: string;
@@ -92,6 +94,9 @@ export async function runFullImport(options: RunFullImportOptions): Promise<Full
     persistence: options.transactionPersistence,
     provider: options.provider,
     providerConnectionId: options.providerConnectionId,
+    ...(options.replacementDetector === undefined
+      ? {}
+      : { replacementDetector: options.replacementDetector }),
     triggerType: options.triggerType ?? 'MANUAL',
     workspaceId: options.workspaceId,
   });

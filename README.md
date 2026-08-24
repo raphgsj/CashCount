@@ -5,7 +5,7 @@ owner's financial data through a provider adapter, preserves normalized history 
 and exposes deterministic analytics to an authenticated web application and a read-only MCP
 server.
 
-**Phases 0 through 2 are complete, and Phase 3 is in progress through PF-036:**
+**Phases 0 through 3 are complete through PF-037:**
 
 - **PF-001** established the monorepo and application/package foundations.
 - **PF-002** added validated application environments and production safety constraints.
@@ -76,14 +76,17 @@ server.
   coverage preservation, and a workspace-scoped range query that emits structured
   `INCOMPLETE_HISTORY` warnings whenever a request predates the actual earliest known date; its
   database gate also hardened concurrent first user-state writes to return typed conflicts.
+- **PF-037** added versioned deterministic provider-replacement scoring, same-sync hard eligibility,
+  ambiguity-aware review links, explicit confirmation/rejection, and idempotent conflict-safe
+  transfer of every user-state field and tag with complete revision/audit evidence.
 
 PF-003 through PF-006 are architecture-documentation milestones; executable implementation now
 extends through Phase 2's database foundation, deterministic domain policy, validated provider
 adapter, complete synthetic fixture matrix, explicit lifecycle mapping, and PF-030's versioned
 encryption boundary plus controlled connection discovery and account, transaction, and bill import.
-The repository intentionally contains no replacement detector, queue worker implementation, product
+The repository intentionally contains no webhook ingestion route, durable worker process, product
 authentication, rule evaluator, analytics service, general financial-data repositories, product UI,
-or production secrets. The next ticket is **PF-037: Transaction replacement detector**.
+or production secrets. The next ticket is **PF-040: Webhook route**.
 
 The accepted decisions are indexed in [`docs/adr/`](docs/adr/README.md). In particular, ADRs 0008
 through 0010 are the implementation contracts for credential boundaries, workspace integrity, and
