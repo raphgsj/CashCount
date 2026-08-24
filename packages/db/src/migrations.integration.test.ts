@@ -6,8 +6,10 @@ import { join } from 'node:path';
 import { parseDatabaseConfig } from '@cashcount/config';
 import {
   providerAccountSchema,
+  providerBillSchema,
   providerTransactionSchema,
   type ProviderAccountDto,
+  type ProviderBillDto,
   type ProviderConnectionDto,
   type ProviderTransactionDto,
 } from '@cashcount/provider-core';
@@ -19,6 +21,7 @@ import {
   AccountImportInvariantError,
   AccountImportRepository,
 } from './account-import-repository.js';
+import { BillImportInvariantError, BillImportRepository } from './bill-import-repository.js';
 import { PayloadEncryptionService, payloadCanonicalizationVersion } from './encryption.js';
 import { defaultMigrationsFolder, runMigrations } from './migrations.js';
 import { ProviderConnectionRepository } from './provider-connection-repository.js';
@@ -281,6 +284,225 @@ describe('database migrations', () => {
         await expect(
           client.query(`delete from workspace where id = '${syntheticIdentitySeed.workspace.id}'`),
         ).rejects.toMatchObject({ code: '23001' });
+      } finally {
+        await client.end();
+      }
+    });
+  }, 30_000);
+
+  it('imports encrypted bills idempotently without synthesizing financial transactions', async () => {
+    await withTemporaryDatabase(async (connectionString) => {
+      await runMigrations(connectionString);
+      await seedSyntheticIdentity(connectionString, 'test');
+
+      const client = new Client({ connectionString });
+      const workspaceId = syntheticIdentitySeed.workspace.id;
+      const providerConnectionId = '40000000-0000-4000-8000-000000000034';
+      const checkingAccountId = '60000000-0000-4000-8000-000000000035';
+      const cardAccountId = '60000000-0000-4000-8000-000000000036';
+      const transactionId = '80000000-0000-4000-8000-000000000034';
+      const externalBillId = 'synthetic-bill-import-bill';
+      const externalCardId = 'synthetic-bill-import-card';
+      const encryption = new PayloadEncryptionService({
+        activeKeyVersion: 10,
+        keyring: new Map([[10, new Uint8Array(32).fill(34)]]),
+      });
+      const bill = (revision = 'initial'): ProviderBillDto =>
+        providerBillSchema.parse({
+          allowsInstallments: null,
+          closeDate: null,
+          currency: 'BRL',
+          dueDate: '2026-09-10',
+          externalAccountId: externalCardId,
+          externalBillId,
+          financeCharges: [
+            {
+              additionalInfo: revision === 'initial' ? null : 'updated evidence',
+              amount: revision === 'initial' ? '1.230000' : '2.340000',
+              chargeType: 'IOF',
+              currency: 'BRL',
+              externalChargeId: 'synthetic-bill-finance-charge',
+              raw: { confidentialMarker: 'charge-secret', revision },
+            },
+          ],
+          minimumPayment: null,
+          payments: [
+            {
+              amount: revision === 'initial' ? '100.000000' : '110.000000',
+              currency: 'BRL',
+              externalPaymentId: 'synthetic-bill-payment',
+              paymentDate: '2026-08-20',
+              paymentMode: null,
+              raw: { confidentialMarker: 'payment-secret', revision },
+              valueType: 'FULL_PAYMENT',
+            },
+          ],
+          providerStatus: null,
+          providerUpdatedAt: null,
+          raw: { confidentialMarker: 'bill-secret', revision },
+          status: 'UNKNOWN',
+          totalAmount: revision === 'initial' ? '250.000000' : '260.000000',
+        });
+
+      try {
+        await client.connect();
+        await client.query(
+          `insert into provider_connection (
+             id, workspace_id, provider, external_connection_id, external_connector_id, display_name
+           ) values ($1, $2, 'PLUGGY', 'synthetic-bill-import-item', 'synthetic-connector', 'Synthetic Fixture Bank')`,
+          [providerConnectionId, workspaceId],
+        );
+        await client.query(
+          `insert into financial_account (
+             id, workspace_id, provider_connection_id, provider, external_account_id,
+             account_type, name, institution_name, currency, masked_number
+           ) values
+             ($1, $2, $3, 'PLUGGY', 'synthetic-bill-checking', 'CHECKING', 'Synthetic checking', 'Synthetic Bank', 'BRL', '6789'),
+             ($4, $2, $3, 'PLUGGY', $5, 'CREDIT_CARD', 'Synthetic card', 'Synthetic Bank', 'BRL', '4321')`,
+          [checkingAccountId, workspaceId, providerConnectionId, cardAccountId, externalCardId],
+        );
+        await client.query(
+          `insert into financial_transaction (
+             id, workspace_id, financial_account_id, provider, provider_transaction_id,
+             provider_bill_id, status, provider_type, provider_amount_signed,
+             provider_currency, account_currency, system_direction, system_financial_role,
+             provider_transaction_at, transaction_local_date, description_original,
+             description_normalized, dedupe_fingerprint
+           ) values (
+             $1, $2, $3, 'PLUGGY', 'synthetic-bill-unresolved-transaction', $4,
+             'POSTED', 'CREDIT', '-25.000000', 'BRL', 'BRL', 'INFLOW', 'UNKNOWN_CREDIT',
+             '2026-08-25T12:00:00Z', '2026-08-25', 'Synthetic unresolved card credit',
+             'synthetic unresolved card credit', $5
+           )`,
+          [transactionId, workspaceId, cardAccountId, externalBillId, 'c'.repeat(64)],
+        );
+
+        const repository = new BillImportRepository(drizzle({ client, schema }));
+        expect(await repository.getImportTarget(randomUUID(), providerConnectionId)).toBeNull();
+        const target = await repository.getImportTarget(workspaceId, providerConnectionId);
+        expect(target).toEqual({
+          accounts: [{ externalAccountId: externalCardId, financialAccountId: cardAccountId }],
+          localStatus: 'ACTIVE',
+        });
+        const account = target?.accounts[0];
+        if (account === undefined) throw new Error('Expected a credit-card import target.');
+
+        await expect(
+          repository.importBills(
+            workspaceId,
+            providerConnectionId,
+            account,
+            [bill()],
+            encryption,
+            new Date('2026-08-23T18:00:00.000Z'),
+          ),
+        ).resolves.toEqual({
+          billsInserted: 1,
+          billsSeen: 1,
+          billsUpdated: 0,
+          financeChargesInserted: 1,
+          financeChargesUpdated: 0,
+          paymentsInserted: 1,
+          paymentsUpdated: 0,
+          rawSnapshotsInserted: 3,
+          transactionsLinked: 1,
+        });
+
+        const normalized = await client.query<{
+          allows_installments: null | boolean;
+          close_date: null | string;
+          minimum_payment: null | string;
+          provider_status: null | string;
+          total_amount: string;
+        }>(
+          `select allows_installments, close_date::text as close_date,
+                  minimum_payment, provider_status, total_amount
+           from credit_card_bill where workspace_id = $1 and external_bill_id = $2`,
+          [workspaceId, externalBillId],
+        );
+        expect(normalized.rows).toEqual([
+          {
+            allows_installments: null,
+            close_date: null,
+            minimum_payment: null,
+            provider_status: null,
+            total_amount: '250.000000',
+          },
+        ]);
+        expect(
+          await queryCount(
+            client,
+            `select count(*)::integer as count from financial_transaction where workspace_id = '${workspaceId}'`,
+          ),
+        ).toBe(1);
+        expect(
+          await queryCount(
+            client,
+            `select count(*)::integer as count from financial_transaction where workspace_id = '${workspaceId}' and id = '${transactionId}' and credit_card_bill_id is not null and system_financial_role = 'UNKNOWN_CREDIT'`,
+          ),
+        ).toBe(1);
+        expect(
+          await queryCount(
+            client,
+            `select count(*)::integer as count from provider_raw_object where workspace_id = '${workspaceId}' and key_version = 10 and entity_type in ('BILL', 'BILL_PAYMENT', 'BILL_FINANCE_CHARGE')`,
+          ),
+        ).toBe(3);
+
+        const repeated = await repository.importBills(
+          workspaceId,
+          providerConnectionId,
+          account,
+          [bill()],
+          encryption,
+          new Date('2026-08-23T19:00:00.000Z'),
+        );
+        expect(repeated).toMatchObject({
+          billsInserted: 0,
+          billsUpdated: 0,
+          financeChargesInserted: 0,
+          financeChargesUpdated: 0,
+          paymentsInserted: 0,
+          paymentsUpdated: 0,
+          rawSnapshotsInserted: 0,
+          transactionsLinked: 0,
+        });
+
+        const updated = await repository.importBills(
+          workspaceId,
+          providerConnectionId,
+          account,
+          [bill('updated')],
+          encryption,
+          new Date('2026-08-23T20:00:00.000Z'),
+        );
+        expect(updated).toMatchObject({
+          billsUpdated: 1,
+          financeChargesUpdated: 1,
+          paymentsUpdated: 1,
+          rawSnapshotsInserted: 3,
+        });
+        expect(
+          await queryCount(
+            client,
+            `select count(*)::integer as count from credit_card_bill_payment where workspace_id = '${workspaceId}'`,
+          ),
+        ).toBe(1);
+        expect(
+          await queryCount(
+            client,
+            `select count(*)::integer as count from credit_card_bill_finance_charge where workspace_id = '${workspaceId}'`,
+          ),
+        ).toBe(1);
+
+        await expect(
+          repository.importBills(
+            workspaceId,
+            providerConnectionId,
+            { ...account, externalAccountId: 'mismatched-account' },
+            [bill()],
+            encryption,
+          ),
+        ).rejects.toBeInstanceOf(BillImportInvariantError);
       } finally {
         await client.end();
       }

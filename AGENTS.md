@@ -50,8 +50,12 @@ record; the versioned implementation plan is the canonical specification.
   exact signed dual-currency/local-date persistence, scoped bill references, provider-ID lifecycle
   revisions, conservative duplicate review, coverage updates, and sync counters while never writing
   transaction user state.
-- The next ticket is PF-034, which adds bill import. Do not imply that queue worker behavior, product
-  authentication, rule evaluation, analytics services, general repositories, or product UI exist.
+- PF-034 adds workspace-scoped bill import with active-key encrypted and hash-deduplicated bill,
+  payment, and finance-charge evidence, nullable unsupported fields, idempotent child upserts, and
+  transaction back-linking without synthesizing financial transactions.
+- The next ticket is PF-035, which adds repeated-full-sync regression coverage. Do not imply that a
+  replacement detector, queue worker behavior, product authentication, rule evaluation, analytics
+  services, general repositories, or product UI exist.
 - ADRs 0008, 0009, and 0010 define mandatory credential, workspace, provider-identity, signed-amount,
   and bill-reconciliation behavior for subsequent tickets.
 - Update this section and the root README together whenever a PF ticket or phase is completed.

@@ -32,7 +32,9 @@ append-only rotation migration records canonicalization versions, enforces 12-by
 PF-031 adds explicit-workspace provider-connection assignment. PF-032 adds locked account imports
 with encrypted, hash-deduplicated raw evidence and masked normalized identifiers. PF-033 adds
 workspace/account-scoped transaction imports with exact values and dates, provider lifecycle
-revisions, coverage and sync-run progress, and no user-state mutation surface.
+revisions, coverage and sync-run progress, and no user-state mutation surface. PF-034 adds scoped
+credit-card bill, payment, and finance-charge imports with nullable provider fields, encrypted
+hash-deduplicated evidence, idempotent child identities, and existing-transaction back-linking only.
 
 From the repository root:
 
@@ -59,16 +61,18 @@ round-trips, transaction continuity, bill reconciliation account roles, intellig
 idempotency, series scope, tag scope, and bounded audit records. Each temporary database is dropped
 afterward. They also verify effective override/provenance behavior, currency-safe spend/cash-flow
 effects, reconciliation warnings, history/freshness, review queues, monthly summaries, and
-installment commitments, plus idempotent encrypted account/transaction imports, exact dual-currency
-round trips, provider deletion/reappearance, and user-state isolation. The database user running
-this CI-only test must be allowed to create and drop databases.
+installment commitments, plus idempotent encrypted account/transaction/bill imports, exact
+dual-currency round trips, provider deletion/reappearance, bill-child updates, unsupported nullable
+bill fields, transaction back-linking without synthesis, and user-state isolation. The database user
+running this CI-only test must be allowed to create and drop databases.
 
 PF-015 replaces PF-014's temporary null-only series guard with composite workspace foreign keys to
 the installment and recurring parents.
 
 Provider raw objects and webhook bodies are stored only as versioned encrypted envelopes. The
-encryption service and account/transaction import repositories implement ADR 0007 with active-key
-writes and context-bound evidence; normalized account storage retains only masked number suffixes.
+encryption service and account/transaction/bill import repositories implement ADR 0007 with
+active-key writes and context-bound evidence; normalized account storage retains only masked number
+suffixes.
 
 Drizzle `0.45.x` currently has third-party declaration errors under TypeScript 6 when dependency
 declarations are checked directly. This package therefore enables `skipLibCheck` locally while all

@@ -5,7 +5,7 @@ owner's financial data through a provider adapter, preserves normalized history 
 and exposes deterministic analytics to an authenticated web application and a read-only MCP
 server.
 
-**Phases 0 through 2 are complete, and Phase 3 is in progress through PF-033:**
+**Phases 0 through 2 are complete, and Phase 3 is in progress through PF-034:**
 
 - **PF-001** established the monorepo and application/package foundations.
 - **PF-002** added validated application environments and production safety constraints.
@@ -66,15 +66,18 @@ server.
   and workspace-local date persistence, scoped bill linking, idempotent provider-ID lifecycle and
   revision handling, conservative duplicate review, coverage updates, and durable sync counters
   without any provider write path to user state.
+- **PF-034** added workspace-scoped credit-card bill import with encrypted, hash-deduplicated bill,
+  payment, and finance-charge evidence; nullable unsupported fields; idempotent child upserts; and
+  scoped transaction back-linking without synthesizing financial transactions.
 
 PF-003 through PF-006 are architecture-documentation milestones; executable implementation now
 extends through Phase 2's database foundation, deterministic domain policy, validated provider
 adapter, complete synthetic fixture matrix, explicit lifecycle mapping, and PF-030's versioned
-encryption boundary plus controlled connection discovery and account import. The repository now also
-contains the transaction import service, but intentionally contains no bill import pipeline, rule
-evaluator, analytics service, general financial-data repositories, queue worker implementation,
-product authentication, product UI, or production secrets. The next ticket is **PF-034: Bill
-import**.
+encryption boundary plus controlled connection discovery and account, transaction, and bill import.
+The repository intentionally contains no repeated-full-sync regression command, replacement
+detector, rule evaluator, analytics service, general financial-data repositories, queue worker
+implementation, product authentication, product UI, or production secrets. The next ticket is
+**PF-035: Repeated-sync regression**.
 
 The accepted decisions are indexed in [`docs/adr/`](docs/adr/README.md). In particular, ADRs 0008
 through 0010 are the implementation contracts for credential boundaries, workspace integrity, and

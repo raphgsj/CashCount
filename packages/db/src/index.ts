@@ -6,6 +6,13 @@ export {
   type AccountImportResult,
   type AccountImportTarget,
 } from './account-import-repository.js';
+export {
+  BillImportInvariantError,
+  BillImportRepository,
+  type BillImportAccount,
+  type BillImportResult,
+  type BillImportTarget,
+} from './bill-import-repository.js';
 export { createDatabaseClient, type DatabaseClient } from './client.js';
 export { defaultMigrationsFolder, runMigrations } from './migrations.js';
 export {
