@@ -5,7 +5,7 @@ owner's financial data through a provider adapter, preserves normalized history 
 and exposes deterministic analytics to an authenticated web application and a read-only MCP
 server.
 
-**Phases 0 through 5 are complete; Phase 6 is in progress through PF-060:**
+**Phases 0 through 5 are complete; Phase 6 is in progress through PF-061:**
 
 - **PF-001** established the monorepo and application/package foundations.
 - **PF-002** added validated application environments and production safety constraints.
@@ -149,15 +149,20 @@ server.
   and database readiness, development-only generated OpenAPI, bounded problem responses, and
   independent fixed-workspace web-owner, MCP-read-only, and webhook credential guards with
   cross-boundary rejection.
+- **PF-061** added bounded fixed-workspace web-owner reads for accounts, credit cards, card bills,
+  bill payments, and finance charges. Public contracts preserve exact decimal strings and useful
+  history/freshness evidence while omitting provider identities, raw payloads, and full numbers;
+  repository queries require workspace scope and cross-role credentials remain non-substitutable.
 
 PF-003 through PF-006 are architecture-documentation milestones; executable implementation now
 extends through Phase 5's infrastructure, database, provider/import, queue/worker, classification,
-and regression-test boundaries.
+and regression-test boundaries plus Phase 6's Fastify framework and account/card read API.
 The persistent worker currently claims its implemented `PROCESS_WEBHOOK` and `SYNC_CONNECTION` job
 types; scheduled reconciliation remains an independent terminating command, and other future queue
 job handlers are not yet registered. The repository intentionally contains no end-user OAuth/session
-authentication, analytics API, account/card API, product UI, or production secrets. The next ticket
-is **PF-061: Account and card endpoints**.
+authentication, transaction or analytics API, product UI, or production secrets. Account/card
+installment and reconciliation workflows remain reserved for PF-066 and PF-067. The next ticket is
+**PF-062: Transaction list/detail/update endpoints**.
 
 The accepted decisions are indexed in [`docs/adr/`](docs/adr/README.md). In particular, ADRs 0008
 through 0010 are the implementation contracts for credential boundaries, workspace integrity, and

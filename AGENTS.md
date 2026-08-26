@@ -124,8 +124,12 @@ record; the versioned implementation plan is the canonical specification.
 - PF-060 starts Phase 6 with Fastify, request-identified liveness/database readiness, bounded
   problems, development-only generated OpenAPI, and independent fixed-workspace web-owner,
   MCP-read-only, and webhook credential guards with cross-boundary rejection.
-- The next ticket is PF-061, which adds account and card endpoints. Do not imply that analytics
-  routes, end-user OAuth/session authentication, account/card endpoints, or product UI exist.
+- PF-061 adds bounded fixed-workspace web-owner reads for accounts, cards, bills, payments, and
+  finance charges with exact decimal-string contracts, workspace-required repositories, and no
+  provider/raw/full-number exposure. Reconciliation and installment routes remain deferred.
+- The next ticket is PF-062, which adds transaction list/detail/update endpoints. Do not imply that
+  analytics routes, end-user OAuth/session authentication, transaction endpoints, or product UI
+  exist.
 - ADRs 0008, 0009, and 0010 define mandatory credential, workspace, provider-identity, signed-amount,
   and bill-reconciliation behavior for subsequent tickets.
 - Update this section and the root README together whenever a PF ticket or phase is completed.

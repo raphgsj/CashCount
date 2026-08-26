@@ -3,6 +3,7 @@ import { Buffer } from 'node:buffer';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { createApiServer, type ApiServerDependencies } from './api-server.js';
+import type { AccountCardRouteRepository } from './account-card-route.js';
 import type { SyncOperationalRouteRepository } from './sync-operational-route.js';
 
 const workspaceId = '10000000-0000-4000-8000-000000000060';
@@ -27,6 +28,19 @@ function repository(): SyncOperationalRouteRepository {
       outcome: 'CONNECTION_NOT_AVAILABLE' as const,
     })),
     retryDeadLetter: vi.fn(async () => ({ outcome: 'NOT_FOUND' as const })),
+  };
+}
+
+function accountCardRepository(): AccountCardRouteRepository {
+  return {
+    getAccount: vi.fn(async () => null),
+    getCard: vi.fn(async () => null),
+    getCardBill: vi.fn(async () => null),
+    listAccounts: vi.fn(async () => []),
+    listBillFinanceCharges: vi.fn(async () => null),
+    listBillPayments: vi.fn(async () => null),
+    listCardBills: vi.fn(async () => null),
+    listCards: vi.fn(async () => []),
   };
 }
 
@@ -66,6 +80,25 @@ describe('Fastify API framework', () => {
     if (mismatched.operational === undefined) throw new Error('Expected operational fixture.');
     mismatched.operational.workspaceId = '10000000-0000-4000-8000-000000000061';
     expect(() => createApiServer(mismatched)).toThrow(/configured workspace/u);
+
+    const mismatchedWebCredential = dependencies();
+    mismatchedWebCredential.accountCards = {
+      repository: accountCardRepository(),
+      webToken: Buffer.alloc(32, 73).toString('base64url'),
+      workspaceId,
+    };
+    expect(() => createApiServer(mismatchedWebCredential)).toThrow(/configured web credential/u);
+
+    const reusedWithoutOperational = dependencies();
+    delete reusedWithoutOperational.operational;
+    reusedWithoutOperational.accountCards = {
+      repository: accountCardRepository(),
+      webToken: reusedWithoutOperational.mcpToken,
+      workspaceId,
+    };
+    expect(() => createApiServer(reusedWithoutOperational)).toThrow(
+      /credentials must be distinct/u,
+    );
   });
 
   it('provides request-identified liveness and database-backed readiness', async () => {

@@ -16,6 +16,10 @@
     "./operational": {
       "types": "./dist/operational.d.ts",
       "import": "./dist/operational.js"
+    },
+    "./finance": {
+      "types": "./dist/finance.d.ts",
+      "import": "./dist/finance.js"
     }
   },
   "scripts": {

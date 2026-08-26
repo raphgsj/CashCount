@@ -5,6 +5,7 @@ import {
   WebhookInboxRepository,
 } from '@cashcount/db/webhook';
 import { SyncOperationalRepository } from '@cashcount/db/operational';
+import { AccountCardRepository } from '@cashcount/db/finance';
 
 import { createApiServer } from './api-server.js';
 
@@ -24,6 +25,11 @@ const encryption = new PayloadEncryptionService({
   keyring: config.DATA_ENCRYPTION_KEYRING_JSON,
 });
 const server = createApiServer({
+  accountCards: {
+    repository: new AccountCardRepository(pool),
+    webToken: config.WEB_TO_API_TOKEN,
+    workspaceId: config.API_WORKSPACE_ID,
+  },
   inbox: new WebhookInboxRepository(pool, encryption),
   mcpToken: config.MCP_TO_API_READONLY_TOKEN,
   nodeEnvironment: config.NODE_ENV,

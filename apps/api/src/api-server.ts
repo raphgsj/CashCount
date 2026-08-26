@@ -5,6 +5,10 @@ import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest }
 
 import { processSyncOperationalRequest } from './sync-operational-route.js';
 import {
+  processAccountCardRequest,
+  type AccountCardRouteDependencies,
+} from './account-card-route.js';
+import {
   pluggyWebhookBodyLimitBytes,
   processPluggyWebhookBody,
   type PluggyWebhookRouteDependencies,
@@ -12,6 +16,7 @@ import {
 import { requirePluggyWebhookCredential } from './webhook-auth.js';
 
 export interface ApiServerDependencies extends PluggyWebhookRouteDependencies {
+  accountCards?: AccountCardRouteDependencies;
   mcpToken: string;
   nodeEnvironment: 'development' | 'production' | 'test';
   readiness?: () => Promise<boolean>;
@@ -64,6 +69,30 @@ async function sendOperationalResult(
   return reply.code(result.status).send(result.body);
 }
 
+async function sendAccountCardResult(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  dependencies: ApiServerDependencies,
+): Promise<unknown> {
+  if (dependencies.accountCards === undefined) {
+    return reply.code(404).send(problem(404, 'Not found', 'NOT_FOUND', request.id));
+  }
+  const result = await processAccountCardRequest(
+    {
+      authorizationHeader: request.headers.authorization ?? null,
+      hasBody: hasRequestBody(request),
+      method: request.method,
+      url: new URL(request.url, 'http://cashcount.invalid'),
+    },
+    { ...dependencies.accountCards, requestId: () => request.id },
+  );
+  if (result === null) {
+    return reply.code(404).send(problem(404, 'Not found', 'NOT_FOUND', request.id));
+  }
+  for (const [name, value] of Object.entries(result.headers)) reply.header(name, value);
+  return reply.code(result.status).send(result.body);
+}
+
 export function createApiServer(dependencies: ApiServerDependencies): FastifyInstance {
   if (
     dependencies.operational !== undefined &&
@@ -71,10 +100,24 @@ export function createApiServer(dependencies: ApiServerDependencies): FastifyIns
   ) {
     throw new TypeError('API route dependencies must use the configured workspace.');
   }
+  if (
+    dependencies.accountCards !== undefined &&
+    dependencies.accountCards.workspaceId !== dependencies.workspaceId
+  ) {
+    throw new TypeError('API route dependencies must use the configured workspace.');
+  }
+  if (
+    dependencies.operational !== undefined &&
+    dependencies.accountCards !== undefined &&
+    dependencies.operational.webToken !== dependencies.accountCards.webToken
+  ) {
+    throw new TypeError('API route dependencies must use the configured web credential.');
+  }
+  const webToken = dependencies.operational?.webToken ?? dependencies.accountCards?.webToken;
   const credentials = [
     dependencies.webhookSecret,
     dependencies.mcpToken,
-    ...(dependencies.operational === undefined ? [] : [dependencies.operational.webToken]),
+    ...(webToken === undefined ? [] : [webToken]),
   ];
   if (new Set(credentials).size !== credentials.length) {
     throw new TypeError('API trust-boundary credentials must be distinct.');
@@ -152,6 +195,19 @@ export function createApiServer(dependencies: ApiServerDependencies): FastifyIns
     '/v1/connections/:id/reconcile',
   ]) {
     server.all(path, (request, reply) => sendOperationalResult(request, reply, dependencies));
+  }
+
+  for (const path of [
+    '/v1/accounts',
+    '/v1/accounts/:id',
+    '/v1/cards',
+    '/v1/cards/:id',
+    '/v1/cards/:id/bills',
+    '/v1/card-bills/:id',
+    '/v1/card-bills/:id/payments',
+    '/v1/card-bills/:id/finance-charges',
+  ]) {
+    server.all(path, (request, reply) => sendAccountCardResult(request, reply, dependencies));
   }
 
   void server.register(async (webhookScope) => {
