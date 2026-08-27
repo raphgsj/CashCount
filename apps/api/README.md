@@ -96,7 +96,17 @@ monthly currency-separated estimates use the canonical commitment view and label
 monthly-from-purchase-date assumption. Missing purchase dates or installment amounts remain
 unallocated with warnings instead of being fabricated. The card route surfaces candidate,
 needs-review, confirmed, and completed states for owner review without adding them to committed
-totals. Recurring detection remains reserved for PF-068.
+totals. Recurring detection is implemented by PF-068.
+
+PF-068 exposes `GET /v1/analytics/recurring-expenses` to web-owner and MCP-read-only callers without
+series IDs, and `GET /v1/recurring-series` plus detection/confirm/reject POST commands to web owners.
+Detection is serialized and idempotent per workspace, considers only the last two years of posted
+purchase effects for confirmed merchants, requires at least three observations, recognizes bounded
+weekly/monthly/quarterly/annual cadence windows, and rejects amount spreads above 20%. It always
+creates `CANDIDATE`, never a confirmed obligation. Owner resolution is transactional and audited;
+rejected/ended evidence remains visible on the review route. Confirmed series contribute exact,
+currency-separated cadence-normalized monthly estimates with an explicit assumption warning.
+Anomaly candidates and forecasts remain reserved for PF-069.
 
 PF-040's `POST /webhooks/pluggy` route retains its isolated webhook guard, accepts only
 `application/json`, and enforces a 256 KiB limit before persistence. PF-045's bounded web-owner sync

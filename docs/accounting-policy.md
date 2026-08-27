@@ -61,3 +61,11 @@ one installment per month from the purchase month and highest confirmed installm
 this assumption. If the amount or purchase date is absent, CashCount returns the series as
 unallocated and does not invent a value or schedule. Currencies remain separate, and candidate or
 needs-review series are not commitments.
+
+## Recurring expenses
+
+Recurring detection considers posted purchase effects for confirmed merchants, grouped by currency,
+and requires at least three recent observations. Cadence windows, interval deviation, and a maximum
+20% amount spread are transparent eligibility gates. Detection creates a candidate only; recurring
+obligations require explicit owner confirmation. Monthly baseline estimates normalize weekly,
+quarterly, annual, or custom cadence averages to a month and remain separate by currency.

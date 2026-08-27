@@ -13,6 +13,7 @@ import {
   AccountCardRepository,
   BillReconciliationRepository,
   ClassificationManagementRepository,
+  RecurringRepository,
   TransactionApiRepository,
 } from '@cashcount/db/finance';
 
@@ -74,6 +75,12 @@ const server = createApiServer({
   readiness: async () => {
     await pool.query('select 1');
     return true;
+  },
+  recurring: {
+    mcpToken: config.MCP_TO_API_READONLY_TOKEN,
+    repository: new RecurringRepository(pool),
+    webToken: config.WEB_TO_API_TOKEN,
+    workspaceId: config.API_WORKSPACE_ID,
   },
   transactions: {
     actorId: 'service_web',

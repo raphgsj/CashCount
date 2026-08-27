@@ -151,8 +151,12 @@ record; the versioned implementation plan is the canonical specification.
   view, with exact monthly/remaining components, explicit assumptions and unallocated/conversion/
   freshness warnings. MCP analytics omit IDs/review states; the web-only card route exposes review
   states without treating candidates as commitments.
-- The next ticket is PF-068, which adds the recurring detector and endpoints. Do not imply that
-  recurring/anomaly/forecast features, end-user OAuth/session authentication, or product UI exist.
+- PF-068 adds serialized, idempotent recurring detection over at least three confirmed-merchant
+  posted purchases with bounded cadence and amount-variation evidence. It creates candidates only;
+  identifier-free web/MCP analytics and web-only audited confirm/reject commands expose exact
+  ranges, next dates, price changes, and estimated cadence-normalized monthly baselines.
+- The next ticket is PF-069, which adds anomaly candidates and forecast. Do not imply that anomaly/
+  forecast features, end-user OAuth/session authentication, or product UI exist.
 - ADRs 0008, 0009, and 0010 define mandatory credential, workspace, provider-identity, signed-amount,
   and bill-reconciliation behavior for subsequent tickets.
 - Update this section and the root README together whenever a PF ticket or phase is completed.

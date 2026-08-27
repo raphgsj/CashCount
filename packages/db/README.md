@@ -75,6 +75,12 @@ only bounded candidates supported by configured currency tolerance, amount/date/
 and resolves owner confirmation/rejection transactionally with audit evidence. Existing PostgreSQL
 triggers and unique indexes remain the final authority for active-match and count-once integrity.
 
+PF-068 adds a workspace-serialized recurring detector and repository. It groups canonical posted
+purchase effects only by confirmed merchant/currency, requires at least three observations, bounded
+interval deviation, and at most 20% amount spread, and persists only review candidates. Repeated
+detection cannot duplicate an existing merchant/currency/cadence series. Owner confirmation and
+rejection are separate idempotent-state, audited transactions; no detector auto-confirms.
+
 From the repository root:
 
 ```bash

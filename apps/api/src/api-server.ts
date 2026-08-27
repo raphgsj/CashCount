@@ -25,6 +25,7 @@ import {
   processInstallmentRequest,
   type InstallmentRouteDependencies,
 } from './installment-route.js';
+import { processRecurringRequest, type RecurringRouteDependencies } from './recurring-route.js';
 import {
   pluggyWebhookBodyLimitBytes,
   processPluggyWebhookBody,
@@ -41,6 +42,7 @@ export interface ApiServerDependencies extends PluggyWebhookRouteDependencies {
   mcpToken: string;
   nodeEnvironment: 'development' | 'production' | 'test';
   readiness?: () => Promise<boolean>;
+  recurring?: RecurringRouteDependencies;
   transactions?: TransactionRouteDependencies;
   workspaceId: string;
 }
@@ -236,6 +238,29 @@ async function sendInstallmentResult(
   return reply.code(result.status).send(result.body);
 }
 
+async function sendRecurringResult(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  dependencies: ApiServerDependencies,
+): Promise<unknown> {
+  if (dependencies.recurring === undefined) {
+    return reply.code(404).send(problem(404, 'Not found', 'NOT_FOUND', request.id));
+  }
+  const result = await processRecurringRequest(
+    {
+      authorizationHeader: request.headers.authorization ?? null,
+      body: request.body,
+      method: request.method,
+      url: new URL(request.url, 'http://cashcount.invalid'),
+    },
+    { ...dependencies.recurring, requestId: () => request.id },
+  );
+  if (result === null)
+    return reply.code(404).send(problem(404, 'Not found', 'NOT_FOUND', request.id));
+  for (const [name, value] of Object.entries(result.headers)) reply.header(name, value);
+  return reply.code(result.status).send(result.body);
+}
+
 export function createApiServer(dependencies: ApiServerDependencies): FastifyInstance {
   if (
     dependencies.analytics !== undefined &&
@@ -252,6 +277,12 @@ export function createApiServer(dependencies: ApiServerDependencies): FastifyIns
   if (
     dependencies.installments !== undefined &&
     dependencies.installments.workspaceId !== dependencies.workspaceId
+  ) {
+    throw new TypeError('API route dependencies must use the configured workspace.');
+  }
+  if (
+    dependencies.recurring !== undefined &&
+    dependencies.recurring.workspaceId !== dependencies.workspaceId
   ) {
     throw new TypeError('API route dependencies must use the configured workspace.');
   }
@@ -297,6 +328,12 @@ export function createApiServer(dependencies: ApiServerDependencies): FastifyIns
   ) {
     throw new TypeError('Installment routes must use the configured MCP credential.');
   }
+  if (
+    dependencies.recurring !== undefined &&
+    dependencies.recurring.mcpToken !== dependencies.mcpToken
+  ) {
+    throw new TypeError('Recurring routes must use the configured MCP credential.');
+  }
   const routeWebTokens = [
     dependencies.analytics?.webToken,
     dependencies.billReconciliation?.webToken,
@@ -305,6 +342,7 @@ export function createApiServer(dependencies: ApiServerDependencies): FastifyIns
     dependencies.transactions?.webToken,
     dependencies.classificationManagement?.webToken,
     dependencies.installments?.webToken,
+    dependencies.recurring?.webToken,
   ].filter((value): value is string => value !== undefined);
   if (new Set(routeWebTokens).size > 1) {
     throw new TypeError('API route dependencies must use the configured web credential.');
@@ -413,6 +451,18 @@ export function createApiServer(dependencies: ApiServerDependencies): FastifyIns
   server.all('/v1/analytics/installment-commitments', (request, reply) =>
     sendInstallmentResult(request, reply, dependencies),
   );
+  server.all('/v1/analytics/recurring-expenses', (request, reply) =>
+    sendRecurringResult(request, reply, dependencies),
+  );
+
+  for (const path of [
+    '/v1/recurring-series',
+    '/v1/recurring-expenses/detect',
+    '/v1/recurring-series/:id/confirm',
+    '/v1/recurring-series/:id/reject',
+  ]) {
+    server.all(path, (request, reply) => sendRecurringResult(request, reply, dependencies));
+  }
 
   for (const path of [
     '/v1/accounts',

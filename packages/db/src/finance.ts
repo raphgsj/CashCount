@@ -48,3 +48,12 @@ export {
   type BillPaymentReconciliationCandidate,
   type CardBillReconciliationSummary,
 } from './bill-reconciliation-repository.js';
+export {
+  RecurringRepository,
+  RecurringSeriesConflictError,
+  RecurringSeriesNotFoundError,
+  type RecurringCadence,
+  type RecurringSeriesRecord,
+  type RecurringSeriesResult,
+  type RecurringStatus,
+} from './recurring-repository.js';
