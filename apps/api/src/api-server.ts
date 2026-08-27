@@ -18,6 +18,10 @@ import {
 } from './classification-management-route.js';
 import { processAnalyticsRequest, type AnalyticsRouteDependencies } from './analytics-route.js';
 import {
+  processBillReconciliationRequest,
+  type BillReconciliationRouteDependencies,
+} from './bill-reconciliation-route.js';
+import {
   pluggyWebhookBodyLimitBytes,
   processPluggyWebhookBody,
   type PluggyWebhookRouteDependencies,
@@ -27,6 +31,7 @@ import { requirePluggyWebhookCredential } from './webhook-auth.js';
 export interface ApiServerDependencies extends PluggyWebhookRouteDependencies {
   accountCards?: AccountCardRouteDependencies;
   analytics?: AnalyticsRouteDependencies;
+  billReconciliation?: BillReconciliationRouteDependencies;
   classificationManagement?: ClassificationManagementRouteDependencies;
   mcpToken: string;
   nodeEnvironment: 'development' | 'production' | 'test';
@@ -179,10 +184,40 @@ async function sendAnalyticsResult(
   return reply.code(result.status).send(result.body);
 }
 
+async function sendBillReconciliationResult(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  dependencies: ApiServerDependencies,
+): Promise<unknown> {
+  if (dependencies.billReconciliation === undefined) {
+    return reply.code(404).send(problem(404, 'Not found', 'NOT_FOUND', request.id));
+  }
+  const result = await processBillReconciliationRequest(
+    {
+      authorizationHeader: request.headers.authorization ?? null,
+      body: request.body,
+      method: request.method,
+      url: new URL(request.url, 'http://cashcount.invalid'),
+    },
+    { ...dependencies.billReconciliation, requestId: () => request.id },
+  );
+  if (result === null) {
+    return reply.code(404).send(problem(404, 'Not found', 'NOT_FOUND', request.id));
+  }
+  for (const [name, value] of Object.entries(result.headers)) reply.header(name, value);
+  return reply.code(result.status).send(result.body);
+}
+
 export function createApiServer(dependencies: ApiServerDependencies): FastifyInstance {
   if (
     dependencies.analytics !== undefined &&
     dependencies.analytics.workspaceId !== dependencies.workspaceId
+  ) {
+    throw new TypeError('API route dependencies must use the configured workspace.');
+  }
+  if (
+    dependencies.billReconciliation !== undefined &&
+    dependencies.billReconciliation.workspaceId !== dependencies.workspaceId
   ) {
     throw new TypeError('API route dependencies must use the configured workspace.');
   }
@@ -216,8 +251,15 @@ export function createApiServer(dependencies: ApiServerDependencies): FastifyIns
   ) {
     throw new TypeError('Analytics routes must use the configured MCP credential.');
   }
+  if (
+    dependencies.billReconciliation !== undefined &&
+    dependencies.billReconciliation.mcpToken !== dependencies.mcpToken
+  ) {
+    throw new TypeError('Bill reconciliation routes must use the configured MCP credential.');
+  }
   const routeWebTokens = [
     dependencies.analytics?.webToken,
+    dependencies.billReconciliation?.webToken,
     dependencies.operational?.webToken,
     dependencies.accountCards?.webToken,
     dependencies.transactions?.webToken,
@@ -308,6 +350,17 @@ export function createApiServer(dependencies: ApiServerDependencies): FastifyIns
     '/v1/connections/:id/reconcile',
   ]) {
     server.all(path, (request, reply) => sendOperationalResult(request, reply, dependencies));
+  }
+
+  for (const path of [
+    '/v1/card-bills/:id/reconciliation',
+    '/v1/bill-payments/:id/reconciliation-candidates',
+    '/v1/bill-payments/:id/confirm-reconciliation',
+    '/v1/bill-payments/:id/reject-reconciliation',
+  ]) {
+    server.all(path, (request, reply) =>
+      sendBillReconciliationResult(request, reply, dependencies),
+    );
   }
 
   server.all('/v1/analytics/spending-summary', (request, reply) =>

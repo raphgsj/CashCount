@@ -8,6 +8,7 @@ import {
 import { SyncOperationalRepository } from '@cashcount/db/operational';
 import {
   AccountCardRepository,
+  BillReconciliationRepository,
   ClassificationManagementRepository,
   TransactionApiRepository,
 } from '@cashcount/db/finance';
@@ -38,6 +39,12 @@ const server = createApiServer({
   analytics: {
     mcpToken: config.MCP_TO_API_READONLY_TOKEN,
     repository: new SpendingCashFlowAnalyticsRepository(pool),
+    webToken: config.WEB_TO_API_TOKEN,
+    workspaceId: config.API_WORKSPACE_ID,
+  },
+  billReconciliation: {
+    mcpToken: config.MCP_TO_API_READONLY_TOKEN,
+    repository: new BillReconciliationRepository(pool),
     webToken: config.WEB_TO_API_TOKEN,
     workspaceId: config.API_WORKSPACE_ID,
   },

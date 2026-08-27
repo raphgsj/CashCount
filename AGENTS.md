@@ -143,9 +143,12 @@ record; the versioned implementation plan is the canonical specification.
 - PF-065 adds exact fixed-workspace net-spending comparisons for previous period, month, year, and
   custom ranges, with full-period/same-elapsed-day semantics, currency/status separation, null
   zero-denominator percentages, bounded category deltas, and the PF-064 freshness/warning envelope.
-- The next ticket is PF-066, which adds card-bill reconciliation. Do not imply that bill workflow
-  endpoints, commitments, recurring/anomaly/forecast features, end-user OAuth/session
-  authentication, or product UI exist.
+- PF-066 adds exact fixed-workspace card-bill reconciliation summaries for web/MCP reads and
+  web-owner-only candidate generation plus audited confirm/reject commands. Candidate eligibility
+  requires configured currency tolerance, ±2 days, a live deposit-account outflow, and effective
+  bill-payment role; PostgreSQL enforces active-match uniqueness and count-once bill semantics.
+- The next ticket is PF-067, which adds installment commitments. Do not imply that commitments,
+  recurring/anomaly/forecast features, end-user OAuth/session authentication, or product UI exist.
 - ADRs 0008, 0009, and 0010 define mandatory credential, workspace, provider-identity, signed-amount,
   and bill-reconciliation behavior for subsequent tickets.
 - Update this section and the root README together whenever a PF ticket or phase is completed.

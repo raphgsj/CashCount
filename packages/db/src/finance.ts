@@ -41,3 +41,10 @@ export {
   type UpdateManagedMerchantInput,
   type UpdateManagedRuleInput,
 } from './classification-management-repository.js';
+export {
+  BillReconciliationConflictError,
+  BillReconciliationNotFoundError,
+  BillReconciliationRepository,
+  type BillPaymentReconciliationCandidate,
+  type CardBillReconciliationSummary,
+} from './bill-reconciliation-repository.js';

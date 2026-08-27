@@ -25,8 +25,8 @@ PF-061 exposes these bounded web-owner reads through the fixed server-side works
 Amounts are exact decimal-string money objects. Responses include masked numbers and normalized
 history/freshness or bill evidence, but never provider/external identifiers, raw payloads, or full
 account/card numbers. Lists are capped at 100, all repository methods require `workspaceId`, and
-MCP/webhook credentials cannot substitute for the web-owner credential. Bill reconciliation and
-installment routes remain reserved for PF-066 and PF-067.
+MCP/webhook credentials cannot substitute for the web-owner credential. Installment routes remain
+reserved for PF-067.
 
 PF-062 exposes `GET /v1/transactions`, `GET /v1/transactions/:id`, and
 `PATCH /v1/transactions/:id` to the same web-owner boundary. Lists require a bounded `from`/`to`
@@ -76,7 +76,18 @@ explicit custom range. Optional same-elapsed-day mode trims both ranges to their
 Results remain separate by currency/status and include exact current/comparison totals, absolute
 differences, percentage differences (null when the comparison total is zero), up to 100 largest
 category changes, freshness, policy version, and applicable warnings. Card-bill reconciliation
-commands remain reserved for PF-066.
+commands are implemented by PF-066.
+
+PF-066 exposes `GET /v1/card-bills/:id/reconciliation` to independent web-owner and MCP-read-only
+credentials. The exact summary labels provider bill, linked posted/pending activity, normalized
+payments/charges, confirmed bank payments, difference/tolerance, unresolved evidence, freshness,
+policy version, and reconciliation warnings without declaring local or provider values universally
+authoritative. Web-owner-only POST commands generate up to 20 conservative candidates and confirm
+or reject a selected candidate. Candidate generation requires matching currency/configured
+tolerance, ±2 days, a posted live deposit-account outflow, and effective bill-payment role.
+Resolution is workspace-scoped, transactional, idempotent in its resolved state, audited, and still
+subject to PostgreSQL active-match uniqueness. MCP cannot invoke commands. Installment commitments
+remain reserved for PF-067.
 
 PF-040's `POST /webhooks/pluggy` route retains its isolated webhook guard, accepts only
 `application/json`, and enforces a 256 KiB limit before persistence. PF-045's bounded web-owner sync

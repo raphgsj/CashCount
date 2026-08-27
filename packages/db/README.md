@@ -69,6 +69,12 @@ workspace and no job is claimed twice.
 PF-042 may additionally restrict a claim to the worker's registered job types, preventing a deployed
 process from consuming durable work before its handler exists.
 
+PF-066 adds a workspace-required bill-reconciliation repository over normalized children and the
+canonical reconciliation/effective-transaction views. It returns exact summary evidence, generates
+only bounded candidates supported by configured currency tolerance, amount/date/deposit-role rules,
+and resolves owner confirmation/rejection transactionally with audit evidence. Existing PostgreSQL
+triggers and unique indexes remain the final authority for active-match and count-once integrity.
+
 From the repository root:
 
 ```bash
