@@ -5,7 +5,7 @@ owner's financial data through a provider adapter, preserves normalized history 
 and exposes deterministic analytics to an authenticated web application and a read-only MCP
 server.
 
-**Phases 0 through 5 are complete; Phase 6 is in progress through PF-063:**
+**Phases 0 through 5 are complete; Phase 6 is in progress through PF-064:**
 
 - **PF-001** established the monorepo and application/package foundations.
 - **PF-002** added validated application environments and production safety constraints.
@@ -163,18 +163,23 @@ server.
   references and preserve confirmed aliases with audit evidence, strict rules remain workspace-
   validated, deletion deactivates rather than erases, and prospective tests neither apply decisions
   nor increment hits.
+- **PF-064** added fixed-workspace spending and deposit-account cash-flow analytics over canonical
+  effective views. Exact decimal-string totals remain separate by currency and posted/pending
+  status, effective user overrides apply, and responses carry policy version, freshness, history,
+  conversion, reconciliation, stale-data, and connection-attention warnings for web and read-only
+  MCP callers.
 
 PF-003 through PF-006 are architecture-documentation milestones; executable implementation now
 extends through Phase 5's infrastructure, database, provider/import, queue/worker, classification,
-and regression-test boundaries plus Phase 6's Fastify account/card, transaction, and classification-
-management API.
+and regression-test boundaries plus Phase 6's Fastify account/card, transaction, classification-
+management, and spending/cash-flow analytics API.
 The persistent worker currently claims its implemented `PROCESS_WEBHOOK` and `SYNC_CONNECTION` job
 types; scheduled reconciliation remains an independent terminating command, and other future queue
 job handlers are not yet registered. The repository intentionally contains no end-user OAuth/session
-authentication, analytics API, product UI, or production secrets.
+authentication, product UI, or production secrets.
 Transaction classification/duplicate/transfer commands and account/card installment/reconciliation
 workflows remain reserved for their later tickets. The next ticket is
-**PF-064: Spending and cash-flow analytics**.
+**PF-065: Period comparison**.
 
 The accepted decisions are indexed in [`docs/adr/`](docs/adr/README.md). In particular, ADRs 0008
 through 0010 are the implementation contracts for credential boundaries, workspace integrity, and

@@ -59,7 +59,16 @@ merchant references including strict rule documents, and record an audit event a
 creation always uses owner source, system suggestions remain inactive until an explicit audited
 activation, and DELETE deactivates the row instead of deleting its evidence. Rule tests scan a
 bounded date range with the pure evaluator, mask sensitive digit sequences, and do not persist
-classification decisions or hit counts. Analytics routes remain reserved for PF-064 onward.
+classification decisions or hit counts.
+
+PF-064 exposes `GET /v1/analytics/spending-summary` to independently authenticated web-owner and
+MCP-read-only callers for the fixed server-side workspace. The route requires a bounded date range,
+accepts allow-listed account/category/merchant, granularity, and pending-status filters, and reads
+only the canonical effective spend and deposit-account cash-flow views. It returns exact decimal
+strings separately by currency and posted/pending status, bounded category/merchant breakdowns and
+time series, accounting-policy version, freshness, and applicable incomplete-history,
+unconverted-currency, unreconciled-bill, stale-data, connection-attention, and truncation warnings.
+No internal or provider identity is exposed. Period comparison remains reserved for PF-065.
 
 PF-040's `POST /webhooks/pluggy` route retains its isolated webhook guard, accepts only
 `application/json`, and enforces a 256 KiB limit before persistence. PF-045's bounded web-owner sync

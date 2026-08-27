@@ -38,6 +38,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@cashcount/analytics':
+        specifier: workspace:*
+        version: link:../../packages/analytics
       '@cashcount/classification':
         specifier: workspace:*
         version: link:../../packages/classification
@@ -97,7 +100,18 @@ importers:
         specifier: workspace:*
         version: link:../../packages/test-fixtures
 
-  packages/analytics: {}
+  packages/analytics:
+    dependencies:
+      '@cashcount/domain':
+        specifier: workspace:*
+        version: link:../domain
+      pg:
+        specifier: 8.23.0
+        version: 8.23.0
+    devDependencies:
+      '@types/pg':
+        specifier: 8.23.1
+        version: 8.23.1
 
   packages/classification:
     dependencies:

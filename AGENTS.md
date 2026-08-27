@@ -135,8 +135,14 @@ record; the versioned implementation plan is the canonical specification.
   management. Global categories are immutable; merchant merges are transactional, workspace-safe,
   alias-preserving, reference-rewiring, and audited; strict rules can be managed and prospectively
   tested without decision or hit-count mutations; deletion retains evidence by deactivating rules.
-- The next ticket is PF-064, which adds spending and cash-flow analytics. Do not imply that
-  analytics routes, end-user OAuth/session authentication, or product UI exist.
+- PF-064 adds fixed-workspace spending and deposit-account cash-flow analytics over canonical
+  effective views, with exact decimal strings separated by currency and posted/pending status,
+  effective user overrides, policy version, freshness, and applicable history, conversion,
+  reconciliation, stale-data, and connection-attention warnings. Web-owner and MCP-read-only
+  credentials are accepted only through their distinct guards.
+- The next ticket is PF-065, which adds period comparison. Do not imply that period comparison,
+  bill workflow endpoints, commitments, recurring/anomaly/forecast features, end-user OAuth/session
+  authentication, or product UI exist.
 - ADRs 0008, 0009, and 0010 define mandatory credential, workspace, provider-identity, signed-amount,
   and bill-reconciliation behavior for subsequent tickets.
 - Update this section and the root README together whenever a PF ticket or phase is completed.

@@ -59,5 +59,16 @@ export {
   type MerchantMerge,
   type MerchantPatch,
 } from './classification-management-contracts.js';
+export {
+  analyticsFreshnessSchema,
+  analyticsGranularitySchema,
+  cashFlowMetricsSchema,
+  spendingCashFlowDataSchema,
+  spendingCashFlowWarningSchema,
+  spendingMetricsSchema,
+  type AnalyticsFreshness,
+  type SpendingCashFlowData,
+  type SpendingCashFlowWarning,
+} from './analytics-contracts.js';
 
 export const packageName = '@cashcount/contracts' as const;

@@ -4,6 +4,13 @@
   "private": true,
   "type": "module",
   "sideEffects": false,
+  "dependencies": {
+    "@cashcount/domain": "workspace:*",
+    "pg": "8.23.0"
+  },
+  "devDependencies": {
+    "@types/pg": "8.23.1"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",

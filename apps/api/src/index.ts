@@ -1,4 +1,5 @@
 import { parseApiConfig } from '@cashcount/config';
+import { SpendingCashFlowAnalyticsRepository } from '@cashcount/analytics';
 import {
   createWebhookDatabasePool,
   PayloadEncryptionService,
@@ -31,6 +32,12 @@ const encryption = new PayloadEncryptionService({
 const server = createApiServer({
   accountCards: {
     repository: new AccountCardRepository(pool),
+    webToken: config.WEB_TO_API_TOKEN,
+    workspaceId: config.API_WORKSPACE_ID,
+  },
+  analytics: {
+    mcpToken: config.MCP_TO_API_READONLY_TOKEN,
+    repository: new SpendingCashFlowAnalyticsRepository(pool),
     webToken: config.WEB_TO_API_TOKEN,
     workspaceId: config.API_WORKSPACE_ID,
   },

@@ -16,6 +16,7 @@ import {
   processClassificationManagementRequest,
   type ClassificationManagementRouteDependencies,
 } from './classification-management-route.js';
+import { processAnalyticsRequest, type AnalyticsRouteDependencies } from './analytics-route.js';
 import {
   pluggyWebhookBodyLimitBytes,
   processPluggyWebhookBody,
@@ -25,6 +26,7 @@ import { requirePluggyWebhookCredential } from './webhook-auth.js';
 
 export interface ApiServerDependencies extends PluggyWebhookRouteDependencies {
   accountCards?: AccountCardRouteDependencies;
+  analytics?: AnalyticsRouteDependencies;
   classificationManagement?: ClassificationManagementRouteDependencies;
   mcpToken: string;
   nodeEnvironment: 'development' | 'production' | 'test';
@@ -153,7 +155,37 @@ async function sendClassificationManagementResult(
   return reply.code(result.status).send(result.body);
 }
 
+async function sendAnalyticsResult(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  dependencies: ApiServerDependencies,
+): Promise<unknown> {
+  if (dependencies.analytics === undefined) {
+    return reply.code(404).send(problem(404, 'Not found', 'NOT_FOUND', request.id));
+  }
+  const result = await processAnalyticsRequest(
+    {
+      authorizationHeader: request.headers.authorization ?? null,
+      hasBody: hasRequestBody(request),
+      method: request.method,
+      url: new URL(request.url, 'http://cashcount.invalid'),
+    },
+    { ...dependencies.analytics, requestId: () => request.id },
+  );
+  if (result === null) {
+    return reply.code(404).send(problem(404, 'Not found', 'NOT_FOUND', request.id));
+  }
+  for (const [name, value] of Object.entries(result.headers)) reply.header(name, value);
+  return reply.code(result.status).send(result.body);
+}
+
 export function createApiServer(dependencies: ApiServerDependencies): FastifyInstance {
+  if (
+    dependencies.analytics !== undefined &&
+    dependencies.analytics.workspaceId !== dependencies.workspaceId
+  ) {
+    throw new TypeError('API route dependencies must use the configured workspace.');
+  }
   if (
     dependencies.operational !== undefined &&
     dependencies.operational.workspaceId !== dependencies.workspaceId
@@ -178,7 +210,14 @@ export function createApiServer(dependencies: ApiServerDependencies): FastifyIns
   ) {
     throw new TypeError('API route dependencies must use the configured workspace.');
   }
+  if (
+    dependencies.analytics !== undefined &&
+    dependencies.analytics.mcpToken !== dependencies.mcpToken
+  ) {
+    throw new TypeError('Analytics routes must use the configured MCP credential.');
+  }
   const routeWebTokens = [
+    dependencies.analytics?.webToken,
     dependencies.operational?.webToken,
     dependencies.accountCards?.webToken,
     dependencies.transactions?.webToken,
@@ -270,6 +309,10 @@ export function createApiServer(dependencies: ApiServerDependencies): FastifyIns
   ]) {
     server.all(path, (request, reply) => sendOperationalResult(request, reply, dependencies));
   }
+
+  server.all('/v1/analytics/spending-summary', (request, reply) =>
+    sendAnalyticsResult(request, reply, dependencies),
+  );
 
   for (const path of [
     '/v1/accounts',
