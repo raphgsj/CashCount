@@ -33,5 +33,31 @@ export {
   type TransactionStatus,
   type TransactionWarning,
 } from './transaction-contracts.js';
+export {
+  categoryCreateSchema,
+  categoryKinds,
+  categoryPatchSchema,
+  classificationRuleCreateSchema,
+  classificationRulePatchSchema,
+  classificationRulePreviewResultSchema,
+  classificationRulePreviewSchema,
+  managedCategorySchema,
+  managedClassificationRuleSchema,
+  managedMerchantAliasSchema,
+  managedMerchantSchema,
+  merchantMergeSchema,
+  merchantPatchSchema,
+  merchantReviewStatuses,
+  type CategoryCreate,
+  type CategoryPatch,
+  type ClassificationRuleCreate,
+  type ClassificationRulePatch,
+  type ClassificationRulePreview,
+  type ManagedCategory,
+  type ManagedClassificationRule,
+  type ManagedMerchant,
+  type MerchantMerge,
+  type MerchantPatch,
+} from './classification-management-contracts.js';
 
 export const packageName = '@cashcount/contracts' as const;

@@ -58,6 +58,23 @@ export {
   type PersistedRuleEvaluationResult,
 } from './classification-rule-repository.js';
 export {
+  ClassificationManagementInvariantError,
+  ClassificationManagementNotFoundError,
+  ClassificationManagementRepository,
+  type CreateManagedCategoryInput,
+  type ManagedCategoryKind,
+  type ManagedCategoryRecord,
+  type ManagedClassificationRuleRecord,
+  type ManagedMerchantAliasRecord,
+  type ManagedMerchantRecord,
+  type ManagedMerchantReviewStatus,
+  type ManagedRulePreviewMatch,
+  type ManagedRulePreviewResult,
+  type UpdateManagedCategoryInput,
+  type UpdateManagedMerchantInput,
+  type UpdateManagedRuleInput,
+} from './classification-management-repository.js';
+export {
   defaultQueueHeartbeatMs,
   defaultQueueLeaseMs,
   JobQueueRepository,

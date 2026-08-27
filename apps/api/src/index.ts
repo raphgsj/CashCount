@@ -5,7 +5,11 @@ import {
   WebhookInboxRepository,
 } from '@cashcount/db/webhook';
 import { SyncOperationalRepository } from '@cashcount/db/operational';
-import { AccountCardRepository, TransactionApiRepository } from '@cashcount/db/finance';
+import {
+  AccountCardRepository,
+  ClassificationManagementRepository,
+  TransactionApiRepository,
+} from '@cashcount/db/finance';
 
 import { createApiServer } from './api-server.js';
 
@@ -27,6 +31,12 @@ const encryption = new PayloadEncryptionService({
 const server = createApiServer({
   accountCards: {
     repository: new AccountCardRepository(pool),
+    webToken: config.WEB_TO_API_TOKEN,
+    workspaceId: config.API_WORKSPACE_ID,
+  },
+  classificationManagement: {
+    actorId: 'service_web',
+    repository: new ClassificationManagementRepository(pool),
     webToken: config.WEB_TO_API_TOKEN,
     workspaceId: config.API_WORKSPACE_ID,
   },

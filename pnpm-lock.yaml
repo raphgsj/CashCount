@@ -38,6 +38,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@cashcount/classification':
+        specifier: workspace:*
+        version: link:../../packages/classification
       '@cashcount/config':
         specifier: workspace:*
         version: link:../../packages/config

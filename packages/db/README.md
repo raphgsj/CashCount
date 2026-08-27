@@ -23,6 +23,12 @@ PF-062 adds a separate workspace-required transaction API repository over the ca
 freshness, and history views. It provides bounded stable-keyset reads without provider identities and
 extends optimistic user-state updates so validated tag replacement commits atomically with notes,
 review state, and overrides.
+PF-063 adds a workspace-required classification-management repository. It manages workspace
+categories while keeping global categories immutable, exposes canonical merchants without identity
+hashes, performs locked audited merchant merges that preserve aliases and rewire scoped references,
+and validates strict rule CRUD against visible categories, merchants, and tags. Rule deletion is
+evidence-preserving deactivation, and bounded prospective evaluation is read-only: it writes neither
+classification decisions nor hit counts.
 PF-019 completes the Phase 1 bill-evidence boundary. A global tolerance table is seeded only for BRL
 at `0.01`; other currencies require an explicit row. Active reconciliation validates compatible
 currency/amount, a two-day date window, effective bill-payment role, deposit-account outflow, and a

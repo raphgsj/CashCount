@@ -13,6 +13,10 @@ import {
   type TransactionRouteDependencies,
 } from './transaction-route.js';
 import {
+  processClassificationManagementRequest,
+  type ClassificationManagementRouteDependencies,
+} from './classification-management-route.js';
+import {
   pluggyWebhookBodyLimitBytes,
   processPluggyWebhookBody,
   type PluggyWebhookRouteDependencies,
@@ -21,6 +25,7 @@ import { requirePluggyWebhookCredential } from './webhook-auth.js';
 
 export interface ApiServerDependencies extends PluggyWebhookRouteDependencies {
   accountCards?: AccountCardRouteDependencies;
+  classificationManagement?: ClassificationManagementRouteDependencies;
   mcpToken: string;
   nodeEnvironment: 'development' | 'production' | 'test';
   readiness?: () => Promise<boolean>;
@@ -123,6 +128,31 @@ async function sendTransactionResult(
   return reply.code(result.status).send(result.body);
 }
 
+async function sendClassificationManagementResult(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  dependencies: ApiServerDependencies,
+): Promise<unknown> {
+  if (dependencies.classificationManagement === undefined) {
+    return reply.code(404).send(problem(404, 'Not found', 'NOT_FOUND', request.id));
+  }
+  const result = await processClassificationManagementRequest(
+    {
+      authorizationHeader: request.headers.authorization ?? null,
+      body: request.body,
+      hasBody: hasRequestBody(request),
+      method: request.method,
+      url: new URL(request.url, 'http://cashcount.invalid'),
+    },
+    { ...dependencies.classificationManagement, requestId: () => request.id },
+  );
+  if (result === null) {
+    return reply.code(404).send(problem(404, 'Not found', 'NOT_FOUND', request.id));
+  }
+  for (const [name, value] of Object.entries(result.headers)) reply.header(name, value);
+  return reply.code(result.status).send(result.body);
+}
+
 export function createApiServer(dependencies: ApiServerDependencies): FastifyInstance {
   if (
     dependencies.operational !== undefined &&
@@ -142,10 +172,17 @@ export function createApiServer(dependencies: ApiServerDependencies): FastifyIns
   ) {
     throw new TypeError('API route dependencies must use the configured workspace.');
   }
+  if (
+    dependencies.classificationManagement !== undefined &&
+    dependencies.classificationManagement.workspaceId !== dependencies.workspaceId
+  ) {
+    throw new TypeError('API route dependencies must use the configured workspace.');
+  }
   const routeWebTokens = [
     dependencies.operational?.webToken,
     dependencies.accountCards?.webToken,
     dependencies.transactions?.webToken,
+    dependencies.classificationManagement?.webToken,
   ].filter((value): value is string => value !== undefined);
   if (new Set(routeWebTokens).size > 1) {
     throw new TypeError('API route dependencies must use the configured web credential.');
@@ -249,6 +286,21 @@ export function createApiServer(dependencies: ApiServerDependencies): FastifyIns
 
   for (const path of ['/v1/transactions', '/v1/transactions/:id']) {
     server.all(path, (request, reply) => sendTransactionResult(request, reply, dependencies));
+  }
+
+  for (const path of [
+    '/v1/categories',
+    '/v1/categories/:id',
+    '/v1/merchants',
+    '/v1/merchants/merge',
+    '/v1/merchants/:id',
+    '/v1/classification-rules',
+    '/v1/classification-rules/:id',
+    '/v1/classification-rules/:id/test',
+  ]) {
+    server.all(path, (request, reply) =>
+      sendClassificationManagementResult(request, reply, dependencies),
+    );
   }
 
   void server.register(async (webhookScope) => {

@@ -20,6 +20,7 @@ import {
 import { z } from 'zod';
 
 import { requireWebOwnerCredential } from './web-owner-auth.js';
+import { maskSensitiveDigitSequences } from './public-text.js';
 
 const canonicalUuidSchema = z.uuid();
 const dateSchema = z.iso.date();
@@ -108,14 +109,6 @@ function money(currency: string, value: null | string) {
   return value === null ? null : { currency, value };
 }
 
-function publicDescription(value: string): string {
-  return value.replace(/(?<!\d)\d(?:[\s.-]?\d){4,18}(?!\d)/gu, (candidate) => {
-    if (/^\d{4}-\d{2}-\d{2}$/u.test(candidate)) return candidate;
-    const digits = candidate.replaceAll(/\D/gu, '');
-    return `••••${digits.slice(-4)}`;
-  });
-}
-
 function nullableOverride(enabled: boolean, id: null | string) {
   if (!enabled) return { mode: 'INHERIT' as const };
   return id === null ? { mode: 'CLEAR' as const } : { id, mode: 'SET' as const };
@@ -158,7 +151,7 @@ function transactionJson(record: TransactionApiRecord): Transaction {
           mcc: record.payeeMcc,
         }
       : null,
-    description: publicDescription(record.description),
+    description: maskSensitiveDigitSequences(record.description),
     duplicateReviewStatus: record.duplicateReviewStatus,
     effective: {
       category: {

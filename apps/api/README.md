@@ -44,6 +44,23 @@ Category, merchant, and tag references must be visible in the fixed workspace. P
 dates, descriptions, status, and identifiers are not patchable. Classification, duplicate-review,
 and transfer-link commands remain outside PF-062.
 
+PF-063 exposes bounded category, canonical-merchant, and classification-rule management to the same
+web-owner boundary:
+
+- `GET /v1/categories`, `POST /v1/categories`, and `PATCH /v1/categories/:id`;
+- `GET /v1/merchants`, `GET|PATCH /v1/merchants/:id`, and `POST /v1/merchants/merge`;
+- `GET|POST /v1/classification-rules`, `PATCH|DELETE /v1/classification-rules/:id`, and
+  `POST /v1/classification-rules/:id/test`.
+
+Global categories are readable but not mutable. Workspace category parentage and rule action
+references are validated before writes. Merchant responses omit identity hashes and provider
+identifiers; merges lock both same-workspace merchants, preserve confirmed aliases, rewire known
+merchant references including strict rule documents, and record an audit event atomically. Rule
+creation always uses owner source, system suggestions remain inactive until an explicit audited
+activation, and DELETE deactivates the row instead of deleting its evidence. Rule tests scan a
+bounded date range with the pure evaluator, mask sensitive digit sequences, and do not persist
+classification decisions or hit counts. Analytics routes remain reserved for PF-064 onward.
+
 PF-040's `POST /webhooks/pluggy` route retains its isolated webhook guard, accepts only
 `application/json`, and enforces a 256 KiB limit before persistence. PF-045's bounded web-owner sync
 run, dead-letter, retry, and manual-reconciliation routes now run through Fastify without expanding

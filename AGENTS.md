@@ -131,9 +131,12 @@ record; the versioned implementation plan is the canonical specification.
   stable cursors, exact signed money, effective provenance/override state, owner notes/review/tags,
   bill/replacement context, structured warnings, and atomic optimistic corrections. Provider fields
   remain immutable and private.
-- The next ticket is PF-063, which adds category, merchant, and rule endpoints. Do not imply that
-  analytics routes, end-user OAuth/session authentication, category/merchant/rule endpoints, or
-  product UI exist.
+- PF-063 adds bounded fixed-workspace web-owner category, merchant, and classification-rule
+  management. Global categories are immutable; merchant merges are transactional, workspace-safe,
+  alias-preserving, reference-rewiring, and audited; strict rules can be managed and prospectively
+  tested without decision or hit-count mutations; deletion retains evidence by deactivating rules.
+- The next ticket is PF-064, which adds spending and cash-flow analytics. Do not imply that
+  analytics routes, end-user OAuth/session authentication, or product UI exist.
 - ADRs 0008, 0009, and 0010 define mandatory credential, workspace, provider-identity, signed-amount,
   and bill-reconciliation behavior for subsequent tickets.
 - Update this section and the root README together whenever a PF ticket or phase is completed.

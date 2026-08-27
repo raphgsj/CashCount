@@ -24,3 +24,20 @@ export {
   TransactionUserStateConflictError,
   TransactionUserStateReferenceError,
 } from './transaction-user-state-repository.js';
+export {
+  ClassificationManagementInvariantError,
+  ClassificationManagementNotFoundError,
+  ClassificationManagementRepository,
+  type CreateManagedCategoryInput,
+  type ManagedCategoryKind,
+  type ManagedCategoryRecord,
+  type ManagedClassificationRuleRecord,
+  type ManagedMerchantAliasRecord,
+  type ManagedMerchantRecord,
+  type ManagedMerchantReviewStatus,
+  type ManagedRulePreviewMatch,
+  type ManagedRulePreviewResult,
+  type UpdateManagedCategoryInput,
+  type UpdateManagedMerchantInput,
+  type UpdateManagedRuleInput,
+} from './classification-management-repository.js';
