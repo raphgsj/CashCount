@@ -11,11 +11,16 @@ freshness, and structured data-quality warnings. Its accounting rules are docume
 
 PF-065 adds exact net-spending period comparisons for calculated previous periods/months/years and
 custom ranges. Full-period and same-elapsed-day comparisons remain separate by currency/status,
-return null percentages for a zero comparison baseline, and expose bounded category changes. Later
-Phase 6 analytics remain outside this package boundary until their tickets are implemented.
+return null percentages for a zero comparison baseline, and expose bounded category changes.
 
 PF-067 adds canonical installment commitments. Confirmed series are projected by remaining count and
 estimated installment amount, grouped by currency and estimated month, and labeled with their
 monthly-from-purchase-date assumption. Missing estimate/date evidence stays unallocated with a
 structured warning; review states are available only to the web card-review route and never enter
 the analytics commitment totals.
+
+PF-069 adds five transparent anomaly-candidate rules and an explainable current-month forecast.
+Candidate output is bounded and identifier-free and never claims fraud. Forecast components expose
+month-to-date net spending, elapsed-day run rate, confirmed recurring/installment commitments, and
+the trailing three-month average. The forecast total uses the greater of the run rate or
+actual-plus-known-commitments floor so commitments are not counted twice.

@@ -69,3 +69,24 @@ and requires at least three recent observations. Cadence windows, interval devia
 20% amount spread are transparent eligibility gates. Detection creates a candidate only; recurring
 obligations require explicit owner confirmation. Monthly baseline estimates normalize weekly,
 quarterly, annual, or custom cadence averages to a month and remain separate by currency.
+
+## Anomaly candidates
+
+Anomaly results are estimates labeled `CANDIDATE`, never fraud findings. Version 1 evaluates five
+transparent signals: a purchase more than 50% above a confirmed merchant's median after at least
+three prior observations; category month-to-date spend more than 50% above its elapsed-day-adjusted
+three-month baseline; an exact same-merchant/currency/amount charge within two days; a newly detected
+recurring candidate; and a confirmed recurring charge more than 10% above its stored average. All
+rules use canonical posted purchase effects, exclude confirmed duplicates and unconverted amounts,
+and return at most 100 identifier-free candidates.
+
+## Month forecast
+
+The current-month forecast remains separate by currency. The run-rate component scales canonical
+month-to-date net spending by `days in month / elapsed days`. Known future commitments include only
+confirmed recurring occurrences whose next expected dates fall in the remaining month and confirmed
+installment allocations derived monthly from purchase date. Because the run rate may already reflect
+those patterns, commitments are not added to it: the reported forecast is the greater of the run-rate
+forecast and the `actual month-to-date + known remaining commitments` floor. The trailing
+three-month average is a reference component, not an added amount. Responses always label these
+assumptions and expose applicable history, conversion, freshness, and connection warnings.

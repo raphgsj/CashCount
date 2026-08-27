@@ -155,8 +155,13 @@ record; the versioned implementation plan is the canonical specification.
   posted purchases with bounded cadence and amount-variation evidence. It creates candidates only;
   identifier-free web/MCP analytics and web-only audited confirm/reject commands expose exact
   ranges, next dates, price changes, and estimated cadence-normalized monthly baselines.
-- The next ticket is PF-069, which adds anomaly candidates and forecast. Do not imply that anomaly/
-  forecast features, end-user OAuth/session authentication, or product UI exist.
+- PF-069 completes Phase 6 with identifier-free web/MCP candidates from five transparent anomaly
+  rules and an explainable current-month forecast. Exact currency-separated components expose run
+  rate, confirmed recurring/installment commitments, trailing averages, assumptions, freshness,
+  and applicable warnings; unusual activity is never called fraud and commitments are not added
+  twice.
+- The next ticket is PF-070, which starts Phase 7 with the Next.js/Auth.js foundation. Do not imply
+  that end-user OAuth/session authentication or product UI already exists.
 - ADRs 0008, 0009, and 0010 define mandatory credential, workspace, provider-identity, signed-amount,
   and bill-reconciliation behavior for subsequent tickets.
 - Update this section and the root README together whenever a PF ticket or phase is completed.

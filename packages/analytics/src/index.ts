@@ -3,6 +3,16 @@ import type { Pool, PoolClient } from 'pg';
 import { parseBankDate, type BankDate } from '@cashcount/domain';
 
 export {
+  AnomalyForecastRepository,
+  anomalyRules,
+  type AnomalyCandidate,
+  type AnomalyCandidatesResult,
+  type AnomalyRule,
+  type EstimateWarning,
+  type MonthForecastCurrency,
+  type MonthForecastResult,
+} from './anomaly-forecast.js';
+export {
   InstallmentCommitmentsRepository,
   type InstallmentCommitmentSeries,
   type InstallmentCommitmentsInput,

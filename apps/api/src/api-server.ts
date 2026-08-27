@@ -27,6 +27,10 @@ import {
 } from './installment-route.js';
 import { processRecurringRequest, type RecurringRouteDependencies } from './recurring-route.js';
 import {
+  processAnomalyForecastRequest,
+  type AnomalyForecastRouteDependencies,
+} from './anomaly-forecast-route.js';
+import {
   pluggyWebhookBodyLimitBytes,
   processPluggyWebhookBody,
   type PluggyWebhookRouteDependencies,
@@ -36,6 +40,7 @@ import { requirePluggyWebhookCredential } from './webhook-auth.js';
 export interface ApiServerDependencies extends PluggyWebhookRouteDependencies {
   accountCards?: AccountCardRouteDependencies;
   analytics?: AnalyticsRouteDependencies;
+  anomalyForecast?: AnomalyForecastRouteDependencies;
   billReconciliation?: BillReconciliationRouteDependencies;
   classificationManagement?: ClassificationManagementRouteDependencies;
   installments?: InstallmentRouteDependencies;
@@ -261,7 +266,36 @@ async function sendRecurringResult(
   return reply.code(result.status).send(result.body);
 }
 
+async function sendAnomalyForecastResult(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  dependencies: ApiServerDependencies,
+): Promise<unknown> {
+  if (dependencies.anomalyForecast === undefined) {
+    return reply.code(404).send(problem(404, 'Not found', 'NOT_FOUND', request.id));
+  }
+  const result = await processAnomalyForecastRequest(
+    {
+      authorizationHeader: request.headers.authorization ?? null,
+      hasBody: hasRequestBody(request),
+      method: request.method,
+      url: new URL(request.url, 'http://cashcount.invalid'),
+    },
+    { ...dependencies.anomalyForecast, requestId: () => request.id },
+  );
+  if (result === null)
+    return reply.code(404).send(problem(404, 'Not found', 'NOT_FOUND', request.id));
+  for (const [name, value] of Object.entries(result.headers)) reply.header(name, value);
+  return reply.code(result.status).send(result.body);
+}
+
 export function createApiServer(dependencies: ApiServerDependencies): FastifyInstance {
+  if (
+    dependencies.anomalyForecast !== undefined &&
+    dependencies.anomalyForecast.workspaceId !== dependencies.workspaceId
+  ) {
+    throw new TypeError('API route dependencies must use the configured workspace.');
+  }
   if (
     dependencies.analytics !== undefined &&
     dependencies.analytics.workspaceId !== dependencies.workspaceId
@@ -317,6 +351,12 @@ export function createApiServer(dependencies: ApiServerDependencies): FastifyIns
     throw new TypeError('Analytics routes must use the configured MCP credential.');
   }
   if (
+    dependencies.anomalyForecast !== undefined &&
+    dependencies.anomalyForecast.mcpToken !== dependencies.mcpToken
+  ) {
+    throw new TypeError('Anomaly and forecast routes must use the configured MCP credential.');
+  }
+  if (
     dependencies.billReconciliation !== undefined &&
     dependencies.billReconciliation.mcpToken !== dependencies.mcpToken
   ) {
@@ -336,6 +376,7 @@ export function createApiServer(dependencies: ApiServerDependencies): FastifyIns
   }
   const routeWebTokens = [
     dependencies.analytics?.webToken,
+    dependencies.anomalyForecast?.webToken,
     dependencies.billReconciliation?.webToken,
     dependencies.operational?.webToken,
     dependencies.accountCards?.webToken,
@@ -454,6 +495,9 @@ export function createApiServer(dependencies: ApiServerDependencies): FastifyIns
   server.all('/v1/analytics/recurring-expenses', (request, reply) =>
     sendRecurringResult(request, reply, dependencies),
   );
+  for (const path of ['/v1/analytics/anomaly-candidates', '/v1/analytics/month-forecast']) {
+    server.all(path, (request, reply) => sendAnomalyForecastResult(request, reply, dependencies));
+  }
 
   for (const path of [
     '/v1/recurring-series',

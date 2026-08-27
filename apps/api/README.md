@@ -106,7 +106,19 @@ weekly/monthly/quarterly/annual cadence windows, and rejects amount spreads abov
 creates `CANDIDATE`, never a confirmed obligation. Owner resolution is transactional and audited;
 rejected/ended evidence remains visible on the review route. Confirmed series contribute exact,
 currency-separated cadence-normalized monthly estimates with an explicit assumption warning.
-Anomaly candidates and forecasts remain reserved for PF-069.
+PF-069 exposes `GET /v1/analytics/anomaly-candidates` and
+`GET /v1/analytics/month-forecast` to independent web-owner and MCP-read-only callers. Candidate
+results use five bounded, transparent rules: merchant amount above a three-observation median by
+50%, category month-to-date spend above its elapsed-day-adjusted trailing baseline by 50%, an exact
+same-merchant/currency/amount charge within two days, a new recurring candidate, and a confirmed
+recurring amount increase above 10%. Results say `CANDIDATE`, never fraud, and omit transaction and
+series IDs. The forecast reports exact currency-separated month-to-date net spending, elapsed-day
+run rate, confirmed recurring occurrences remaining in the month, confirmed installment allocation,
+and trailing three-month average. Its total is the greater of the run-rate forecast and the
+actual-plus-known-commitments floor, preventing commitments from being added twice. Both endpoints
+include policy version, workspace-local as-of date, freshness, assumptions, and applicable history,
+conversion, connection, staleness, or truncation warnings. PF-070 starts the authenticated web
+application.
 
 PF-040's `POST /webhooks/pluggy` route retains its isolated webhook guard, accepts only
 `application/json`, and enforces a 256 KiB limit before persistence. PF-045's bounded web-owner sync
