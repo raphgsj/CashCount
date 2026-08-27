@@ -19,7 +19,7 @@
     "build": "tsc -p tsconfig.json",
     "lint": "eslint src --max-warnings=0",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run src/config.test.ts src/pluggy-webhook-schema.test.ts src/webhook-auth.test.ts src/web-owner-auth.test.ts src/auth-role-matrix.test.ts src/sync-operational-route.test.ts src/account-card-route.test.ts src/transaction-route.test.ts src/classification-management-route.test.ts src/analytics-route.test.ts src/bill-reconciliation-route.test.ts src/webhook-route.test.ts src/api-server.test.ts",
-    "test:integration": "vitest run src/webhook-route.integration.test.ts src/sync-operational-route.integration.test.ts src/account-card-route.integration.test.ts src/transaction-route.integration.test.ts src/classification-management-route.integration.test.ts src/analytics-route.integration.test.ts src/bill-reconciliation-route.integration.test.ts"
+    "test": "vitest run src/config.test.ts src/pluggy-webhook-schema.test.ts src/webhook-auth.test.ts src/web-owner-auth.test.ts src/auth-role-matrix.test.ts src/sync-operational-route.test.ts src/account-card-route.test.ts src/transaction-route.test.ts src/classification-management-route.test.ts src/analytics-route.test.ts src/bill-reconciliation-route.test.ts src/installment-route.test.ts src/webhook-route.test.ts src/api-server.test.ts",
+    "test:integration": "vitest run src/webhook-route.integration.test.ts src/sync-operational-route.integration.test.ts src/account-card-route.integration.test.ts src/transaction-route.integration.test.ts src/classification-management-route.integration.test.ts src/analytics-route.integration.test.ts src/bill-reconciliation-route.integration.test.ts src/installment-route.integration.test.ts"
   }
 }

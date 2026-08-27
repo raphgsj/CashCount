@@ -52,3 +52,12 @@ ranges to their shared number of calendar days, while full-period mode preserves
 Absolute difference is `current - comparison`. Percentage difference is
 `(current - comparison) / comparison * 100`, rounded to six decimal places; it is null when the
 comparison total is zero. Deltas are never combined across currencies or posted/pending status.
+
+## Installment commitments
+
+Only `CONFIRMED` installment series with remaining installments enter commitment analytics. The
+remaining estimate is `estimated installment amount × remaining count`. Monthly allocation assumes
+one installment per month from the purchase month and highest confirmed installment; the API labels
+this assumption. If the amount or purchase date is absent, CashCount returns the series as
+unallocated and does not invent a value or schedule. Currencies remain separate, and candidate or
+needs-review series are not commitments.

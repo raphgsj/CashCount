@@ -2,6 +2,15 @@ import type { Pool, PoolClient } from 'pg';
 
 import { parseBankDate, type BankDate } from '@cashcount/domain';
 
+export {
+  InstallmentCommitmentsRepository,
+  type InstallmentCommitmentSeries,
+  type InstallmentCommitmentsInput,
+  type InstallmentCommitmentsResult,
+  type InstallmentCommitmentWarning,
+  type MonthlyInstallmentCommitment,
+} from './installment-commitments.js';
+
 export const packageName = '@cashcount/analytics' as const;
 
 export const analyticsGranularities = ['DAY', 'WEEK', 'MONTH'] as const;

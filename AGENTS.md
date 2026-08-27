@@ -147,7 +147,11 @@ record; the versioned implementation plan is the canonical specification.
   web-owner-only candidate generation plus audited confirm/reject commands. Candidate eligibility
   requires configured currency tolerance, ±2 days, a live deposit-account outflow, and effective
   bill-payment role; PostgreSQL enforces active-match uniqueness and count-once bill semantics.
-- The next ticket is PF-067, which adds installment commitments. Do not imply that commitments,
+- PF-067 adds confirmed-only, currency-separated installment commitment estimates over the canonical
+  view, with exact monthly/remaining components, explicit assumptions and unallocated/conversion/
+  freshness warnings. MCP analytics omit IDs/review states; the web-only card route exposes review
+  states without treating candidates as commitments.
+- The next ticket is PF-068, which adds the recurring detector and endpoints. Do not imply that
   recurring/anomaly/forecast features, end-user OAuth/session authentication, or product UI exist.
 - ADRs 0008, 0009, and 0010 define mandatory credential, workspace, provider-identity, signed-amount,
   and bill-reconciliation behavior for subsequent tickets.

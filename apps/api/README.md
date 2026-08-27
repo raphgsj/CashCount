@@ -87,7 +87,16 @@ or reject a selected candidate. Candidate generation requires matching currency/
 tolerance, ±2 days, a posted live deposit-account outflow, and effective bill-payment role.
 Resolution is workspace-scoped, transactional, idempotent in its resolved state, audited, and still
 subject to PostgreSQL active-match uniqueness. MCP cannot invoke commands. Installment commitments
-remain reserved for PF-067.
+are implemented by PF-067.
+
+PF-067 exposes `GET /v1/analytics/installment-commitments` to web-owner and MCP-read-only callers and
+`GET /v1/cards/:id/installments` to web owners. Analytics include only confirmed series with
+remaining installments, never candidate/review rows, and omit internal IDs. Exact per-series and
+monthly currency-separated estimates use the canonical commitment view and label the
+monthly-from-purchase-date assumption. Missing purchase dates or installment amounts remain
+unallocated with warnings instead of being fabricated. The card route surfaces candidate,
+needs-review, confirmed, and completed states for owner review without adding them to committed
+totals. Recurring detection remains reserved for PF-068.
 
 PF-040's `POST /webhooks/pluggy` route retains its isolated webhook guard, accepts only
 `application/json`, and enforces a 256 KiB limit before persistence. PF-045's bounded web-owner sync
