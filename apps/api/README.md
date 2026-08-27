@@ -68,7 +68,15 @@ only the canonical effective spend and deposit-account cash-flow views. It retur
 strings separately by currency and posted/pending status, bounded category/merchant breakdowns and
 time series, accounting-policy version, freshness, and applicable incomplete-history,
 unconverted-currency, unreconciled-bill, stale-data, connection-attention, and truncation warnings.
-No internal or provider identity is exposed. Period comparison remains reserved for PF-065.
+No internal or provider identity is exposed.
+
+PF-065 exposes `GET /v1/analytics/compare-periods` through the same independent read guards. It
+compares canonical net spending against a previous equal period, shifted month, shifted year, or
+explicit custom range. Optional same-elapsed-day mode trims both ranges to their shared day count.
+Results remain separate by currency/status and include exact current/comparison totals, absolute
+differences, percentage differences (null when the comparison total is zero), up to 100 largest
+category changes, freshness, policy version, and applicable warnings. Card-bill reconciliation
+commands remain reserved for PF-066.
 
 PF-040's `POST /webhooks/pluggy` route retains its isolated webhook guard, accepts only
 `application/json`, and enforces a 256 KiB limit before persistence. PF-045's bounded web-owner sync

@@ -5,7 +5,7 @@ owner's financial data through a provider adapter, preserves normalized history 
 and exposes deterministic analytics to an authenticated web application and a read-only MCP
 server.
 
-**Phases 0 through 5 are complete; Phase 6 is in progress through PF-064:**
+**Phases 0 through 5 are complete; Phase 6 is in progress through PF-065:**
 
 - **PF-001** established the monorepo and application/package foundations.
 - **PF-002** added validated application environments and production safety constraints.
@@ -168,18 +168,22 @@ server.
   status, effective user overrides apply, and responses carry policy version, freshness, history,
   conversion, reconciliation, stale-data, and connection-attention warnings for web and read-only
   MCP callers.
+- **PF-065** added exact fixed-workspace net-spending comparisons for previous period, month, year,
+  and explicit custom ranges. Full-period and same-elapsed-day results expose absolute and percentage
+  changes separately by currency/status, use null for zero-denominator percentages, and include
+  bounded largest-category changes with the same freshness and warning envelope.
 
 PF-003 through PF-006 are architecture-documentation milestones; executable implementation now
 extends through Phase 5's infrastructure, database, provider/import, queue/worker, classification,
 and regression-test boundaries plus Phase 6's Fastify account/card, transaction, classification-
-management, and spending/cash-flow analytics API.
+management, spending/cash-flow analytics, and period-comparison API.
 The persistent worker currently claims its implemented `PROCESS_WEBHOOK` and `SYNC_CONNECTION` job
 types; scheduled reconciliation remains an independent terminating command, and other future queue
 job handlers are not yet registered. The repository intentionally contains no end-user OAuth/session
 authentication, product UI, or production secrets.
 Transaction classification/duplicate/transfer commands and account/card installment/reconciliation
 workflows remain reserved for their later tickets. The next ticket is
-**PF-065: Period comparison**.
+**PF-066: Card bill reconciliation**.
 
 The accepted decisions are indexed in [`docs/adr/`](docs/adr/README.md). In particular, ADRs 0008
 through 0010 are the implementation contracts for credential boundaries, workspace integrity, and

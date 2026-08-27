@@ -60,6 +60,7 @@ describe('spending and cash-flow analytics integration', () => {
         const excludedId = '70000000-0000-4000-8000-000000000075';
         const unconvertedId = '70000000-0000-4000-8000-000000000076';
         const otherTransactionId = '70000000-0000-4000-8000-000000000077';
+        const comparisonPurchaseId = '70000000-0000-4000-8000-000000000078';
         const billPaymentId = '80000000-0000-4000-8000-000000000065';
         const financeChargeId = '90000000-0000-4000-8000-000000000065';
 
@@ -195,6 +196,18 @@ describe('spending and cash-flow analytics integration', () => {
           id: purchaseId,
           merchantId,
           providerId: 'checking-purchase-private',
+          role: 'PURCHASE',
+          workspaceId,
+        });
+        await insertTransaction({
+          accountId: checkingId,
+          amount: '-95.000000',
+          categoryId: categoryAId,
+          date: '2026-07-05',
+          direction: 'OUTFLOW',
+          id: comparisonPurchaseId,
+          merchantId,
+          providerId: 'comparison-purchase-private',
           role: 'PURCHASE',
           workspaceId,
         });
@@ -477,6 +490,45 @@ describe('spending and cash-flow analytics integration', () => {
             status: 'PENDING',
           });
           expect(withPending.body).not.toMatch(/"(?:account|category|merchant|transaction)Id"/u);
+
+          const comparison = await get(
+            '/v1/analytics/compare-periods?currentFrom=2026-08-01&currentTo=2026-08-31' +
+              '&mode=PREVIOUS_MONTH',
+            mcpToken,
+          );
+          expect(comparison.statusCode).toBe(200);
+          expect(comparison.json()).toMatchObject({
+            data: {
+              comparisonFrom: '2026-07-01',
+              comparisonTo: '2026-07-31',
+              currentFrom: '2026-08-01',
+              currentTo: '2026-08-31',
+              mode: 'PREVIOUS_MONTH',
+              totals: [
+                {
+                  absoluteDifference: '190.000007',
+                  comparisonTotal: '95.000000',
+                  currency: 'BRL',
+                  currentTotal: '285.000007',
+                  percentageDifference: '200.000007',
+                  status: 'POSTED',
+                },
+              ],
+            },
+            meta: { policyVersion: 1, workspaceId },
+          });
+          expect(comparison.body).not.toMatch(/private|1234|9876|synthetic-owner/iu);
+
+          const zeroBaseline = await get(
+            '/v1/analytics/compare-periods?currentFrom=2026-08-01&currentTo=2026-08-31' +
+              `&mode=PREVIOUS_MONTH&categoryId=${categoryBId}`,
+          );
+          expect(zeroBaseline.statusCode).toBe(200);
+          expect(zeroBaseline.json().data.totals[0]).toMatchObject({
+            comparisonTotal: '0.000000',
+            currentTotal: '100.000001',
+            percentageDifference: null,
+          });
 
           const otherCategory = await get(
             `/v1/analytics/spending-summary?from=2026-08-01&to=2026-08-31&categoryId=${otherCategoryId}`,

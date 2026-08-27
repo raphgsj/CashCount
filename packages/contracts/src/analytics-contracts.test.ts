@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   analyticsFreshnessSchema,
+  periodComparisonDataSchema,
   spendingCashFlowDataSchema,
   spendingCashFlowWarningSchema,
 } from './analytics-contracts.js';
@@ -52,6 +53,31 @@ describe('analytics contracts', () => {
         lastSuccessfulSyncAt: '2026-08-27T00:00:00.000Z',
         oldestAccountSyncAt: '2026-08-26T23:00:00.000Z',
         staleAfterMinutes: 1440,
+      }),
+    ).toBeDefined();
+  });
+
+  it('represents period deltas exactly and leaves zero-denominator percentages null', () => {
+    expect(
+      periodComparisonDataSchema.parse({
+        categoryChanges: [],
+        comparisonFrom: '2026-07-01',
+        comparisonTo: '2026-07-31',
+        currentFrom: '2026-08-01',
+        currentTo: '2026-08-31',
+        includePending: false,
+        mode: 'PREVIOUS_MONTH',
+        sameElapsedDays: false,
+        totals: [
+          {
+            absoluteDifference: '10.000001',
+            comparisonTotal: '0.000000',
+            currency: 'BRL',
+            currentTotal: '10.000001',
+            percentageDifference: null,
+            status: 'POSTED',
+          },
+        ],
       }),
     ).toBeDefined();
   });

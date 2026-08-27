@@ -313,6 +313,9 @@ export function createApiServer(dependencies: ApiServerDependencies): FastifyIns
   server.all('/v1/analytics/spending-summary', (request, reply) =>
     sendAnalyticsResult(request, reply, dependencies),
   );
+  server.all('/v1/analytics/compare-periods', (request, reply) =>
+    sendAnalyticsResult(request, reply, dependencies),
+  );
 
   for (const path of [
     '/v1/accounts',

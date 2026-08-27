@@ -41,3 +41,14 @@ Spending and cash flow remain separate metrics and must never be substituted for
 
 Every analytics response includes policy version, generation time, freshness, and applicable
 incomplete-history, currency, reconciliation, connection, and staleness warnings.
+
+## Period comparison
+
+Period comparisons use canonical net spending under the rules above. `PREVIOUS_PERIOD` selects an
+equal immediately preceding range; month/year modes shift each requested boundary and clamp invalid
+month-end or leap-day dates; `CUSTOM` uses both explicit ranges. Same-elapsed-day mode trims both
+ranges to their shared number of calendar days, while full-period mode preserves both ranges.
+
+Absolute difference is `current - comparison`. Percentage difference is
+`(current - comparison) / comparison * 100`, rounded to six decimal places; it is null when the
+comparison total is zero. Deltas are never combined across currencies or posted/pending status.

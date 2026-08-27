@@ -62,11 +62,14 @@ export {
 export {
   analyticsFreshnessSchema,
   analyticsGranularitySchema,
+  periodComparisonDataSchema,
+  periodComparisonModeSchema,
   cashFlowMetricsSchema,
   spendingCashFlowDataSchema,
   spendingCashFlowWarningSchema,
   spendingMetricsSchema,
   type AnalyticsFreshness,
+  type PeriodComparisonData,
   type SpendingCashFlowData,
   type SpendingCashFlowWarning,
 } from './analytics-contracts.js';

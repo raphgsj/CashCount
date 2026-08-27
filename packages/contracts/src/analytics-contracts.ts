@@ -9,6 +9,12 @@ const decimalStringSchema = z
 const statusSchema = z.enum(['PENDING', 'POSTED']);
 
 export const analyticsGranularitySchema = z.enum(['DAY', 'WEEK', 'MONTH']);
+export const periodComparisonModeSchema = z.enum([
+  'PREVIOUS_PERIOD',
+  'PREVIOUS_MONTH',
+  'PREVIOUS_YEAR',
+  'CUSTOM',
+]);
 
 export const spendingMetricsSchema = z
   .object({
@@ -111,6 +117,35 @@ export const spendingCashFlowDataSchema = z
   })
   .strict();
 
+const periodComparisonValueSchema = z
+  .object({
+    absoluteDifference: decimalStringSchema,
+    comparisonTotal: decimalStringSchema,
+    currency: currencySchema,
+    currentTotal: decimalStringSchema,
+    percentageDifference: decimalStringSchema.nullable(),
+    status: statusSchema,
+  })
+  .strict();
+
+export const periodComparisonDataSchema = z
+  .object({
+    categoryChanges: z
+      .array(
+        periodComparisonValueSchema.extend({ label: z.string().trim().min(1).max(500).nullable() }),
+      )
+      .max(100),
+    comparisonFrom: dateSchema,
+    comparisonTo: dateSchema,
+    currentFrom: dateSchema,
+    currentTo: dateSchema,
+    includePending: z.boolean(),
+    mode: periodComparisonModeSchema,
+    sameElapsedDays: z.boolean(),
+    totals: z.array(periodComparisonValueSchema).max(200),
+  })
+  .strict();
+
 export const analyticsFreshnessSchema = z
   .object({
     isStale: z.boolean(),
@@ -121,5 +156,6 @@ export const analyticsFreshnessSchema = z
   .strict();
 
 export type AnalyticsFreshness = z.infer<typeof analyticsFreshnessSchema>;
+export type PeriodComparisonData = z.infer<typeof periodComparisonDataSchema>;
 export type SpendingCashFlowData = z.infer<typeof spendingCashFlowDataSchema>;
 export type SpendingCashFlowWarning = z.infer<typeof spendingCashFlowWarningSchema>;

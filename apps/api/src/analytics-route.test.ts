@@ -1,6 +1,6 @@
 import { Buffer } from 'node:buffer';
 
-import type { SpendingCashFlowResult } from '@cashcount/analytics';
+import type { PeriodComparisonResult, SpendingCashFlowResult } from '@cashcount/analytics';
 
 import type { AnalyticsRouteRepository, AnalyticsRouteDependencies } from './analytics-route.js';
 import { processAnalyticsRequest } from './analytics-route.js';
@@ -16,6 +16,44 @@ const requestId = '40000000-0000-4000-8000-000000000064';
 
 function repository(): AnalyticsRouteRepository {
   return {
+    comparePeriods: vi.fn(async (): Promise<PeriodComparisonResult> => ({
+      categoryChanges: [
+        {
+          absoluteDifference: '25.000001',
+          comparisonTotal: '75.000000',
+          currency: 'BRL',
+          currentTotal: '100.000001',
+          label: 'Mercado',
+          percentageDifference: '33.333335',
+          status: 'POSTED',
+        },
+      ],
+      comparisonFrom: '2026-07-01' as PeriodComparisonResult['comparisonFrom'],
+      comparisonTo: '2026-07-31' as PeriodComparisonResult['comparisonTo'],
+      currentFrom: '2026-08-01' as PeriodComparisonResult['currentFrom'],
+      currentTo: '2026-08-31' as PeriodComparisonResult['currentTo'],
+      freshness: {
+        isStale: false,
+        lastSuccessfulSyncAt: new Date('2026-08-27T00:00:00Z'),
+        oldestAccountSyncAt: new Date('2026-08-26T23:00:00Z'),
+        staleAfterMinutes: 1440,
+      },
+      includePending: false,
+      mode: 'PREVIOUS_MONTH',
+      policyVersion: 1,
+      sameElapsedDays: false,
+      totals: [
+        {
+          absoluteDifference: '25.000001',
+          comparisonTotal: '75.000000',
+          currency: 'BRL',
+          currentTotal: '100.000001',
+          percentageDifference: '33.333335',
+          status: 'POSTED',
+        },
+      ],
+      warnings: [],
+    })),
     summarize: vi.fn(async (): Promise<SpendingCashFlowResult> => ({
       categoryBreakdown: [],
       freshness: {
@@ -153,6 +191,33 @@ describe('analytics route', () => {
     });
   });
 
+  it('returns bounded exact period comparisons and maps calculated modes', async () => {
+    const repo = repository();
+    const result = await processAnalyticsRequest(
+      request(
+        '/v1/analytics/compare-periods?currentFrom=2026-08-01&currentTo=2026-08-31' +
+          `&mode=PREVIOUS_MONTH&accountId=${accountId}&sameElapsedDays=true`,
+        mcpToken,
+      ),
+      dependencies(repo),
+    );
+    expect(result?.status).toBe(200);
+    expect(result?.body).toMatchObject({
+      data: {
+        categoryChanges: [{ absoluteDifference: '25.000001', label: 'Mercado' }],
+        totals: [{ percentageDifference: '33.333335' }],
+      },
+      meta: { policyVersion: 1, workspaceId },
+    });
+    expect(repo.comparePeriods).toHaveBeenCalledWith(workspaceId, {
+      accountId,
+      currentFrom: '2026-08-01',
+      currentTo: '2026-08-31',
+      mode: 'PREVIOUS_MONTH',
+      sameElapsedDays: true,
+    });
+  });
+
   it('rejects unbounded, duplicate, caller-scoped, malformed, and body-bearing queries', async () => {
     for (const path of [
       '/v1/analytics/spending-summary',
@@ -161,6 +226,9 @@ describe('analytics route', () => {
       '/v1/analytics/spending-summary?from=2026-08-01&to=2026-08-31&includePending=1',
       '/v1/analytics/spending-summary?from=2026-08-01&to=2026-08-31&granularity=YEAR',
       '/v1/analytics/spending-summary?from=2026-08-01&to=2026-08-31&accountId=bad',
+      '/v1/analytics/compare-periods?currentFrom=2026-08-01&currentTo=2026-08-31',
+      '/v1/analytics/compare-periods?currentFrom=2026-08-01&currentTo=2026-08-31&mode=CUSTOM',
+      '/v1/analytics/compare-periods?currentFrom=2026-08-01&currentTo=2026-08-31&mode=PREVIOUS_MONTH&sameElapsedDays=1',
     ]) {
       expect((await processAnalyticsRequest(request(path), dependencies()))?.status).toBe(400);
     }
