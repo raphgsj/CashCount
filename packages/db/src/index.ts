@@ -144,9 +144,22 @@ export {
   type TransactionReplacementTransferResult,
 } from './transaction-replacement-repository.js';
 export {
+  TransactionApiRepository,
+  type TransactionApiListInput,
+  type TransactionApiPage,
+  type TransactionApiRecord,
+  type TransactionApiReplacementContext,
+  type TransactionApiStatus,
+  type TransactionApiTag,
+  type TransactionApiUpdateInput,
+  type TransactionApiWarning,
+  type TransactionHistoryCoverageStatus,
+} from './transaction-api-repository.js';
+export {
   financialRoles,
   TransactionNotFoundError,
   TransactionUserStateConflictError,
+  TransactionUserStateReferenceError,
   TransactionUserStateRepository,
   transactionReviewStatuses,
   type AppliedManualCorrection,

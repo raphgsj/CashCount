@@ -41,6 +41,9 @@ importers:
       '@cashcount/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@cashcount/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       '@cashcount/db':
         specifier: workspace:*
         version: link:../../packages/db

@@ -19,6 +19,10 @@ PF-018 adds the first deliberately narrow repository: every transaction user-sta
 requires `workspaceId`; updates serialize on the owning transaction, distinguish missing rows from
 stale versions, implement explicit `SET`/`CLEAR`/`INHERIT`, and read effective values only from the
 canonical view. Provider synchronization has no user-state mutation method.
+PF-062 adds a separate workspace-required transaction API repository over the canonical effective,
+freshness, and history views. It provides bounded stable-keyset reads without provider identities and
+extends optimistic user-state updates so validated tag replacement commits atomically with notes,
+review state, and overrides.
 PF-019 completes the Phase 1 bill-evidence boundary. A global tolerance table is seeded only for BRL
 at `0.01`; other currencies require an explicit row. Active reconciliation validates compatible
 currency/amount, a two-day date window, effective bill-payment role, deposit-account outflow, and a

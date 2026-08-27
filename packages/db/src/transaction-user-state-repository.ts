@@ -47,6 +47,7 @@ export interface UpdateTransactionUserStateInput {
   merchantOverride?: NullableOverridePatch<string>;
   notes?: string | null;
   reviewStatus?: TransactionReviewStatus;
+  tagIds?: string[];
   transactionId: string;
   workspaceId: string;
 }
@@ -209,6 +210,16 @@ export class TransactionUserStateConflictError extends Error {
   }
 }
 
+export class TransactionUserStateReferenceError extends Error {
+  public readonly field: 'category' | 'merchant' | 'tag';
+
+  public constructor(field: 'category' | 'merchant' | 'tag') {
+    super(`Transaction user-state ${field} reference is not visible in the required workspace.`);
+    this.name = 'TransactionUserStateReferenceError';
+    this.field = field;
+  }
+}
+
 function mapState(row: StateRow): TransactionUserStateRecord {
   return {
     categoryIdOverride: row.category_id_override,
@@ -323,6 +334,56 @@ function resolveState(row: LockedStateRow, input: UpdateTransactionUserStateInpu
     notes: input.notes === undefined ? row.notes : input.notes,
     reviewStatus: input.reviewStatus ?? row.review_status ?? 'UNREVIEWED',
   };
+}
+
+async function validateReferences(
+  client: PoolClient,
+  input: UpdateTransactionUserStateInput,
+  next: ResolvedState,
+): Promise<void> {
+  if (next.categoryOverrideEnabled && next.categoryIdOverride !== null) {
+    const category = await client.query<{ visible: boolean }>(
+      `select exists (
+         select 1 from category
+         where id = $1 and is_active and (workspace_id is null or workspace_id = $2)
+       ) as visible`,
+      [next.categoryIdOverride, input.workspaceId],
+    );
+    if (category.rows[0]?.visible !== true) {
+      throw new TransactionUserStateReferenceError('category');
+    }
+  }
+  if (next.merchantOverrideEnabled && next.merchantIdOverride !== null) {
+    const merchant = await client.query<{ visible: boolean }>(
+      `select exists (
+         select 1 from merchant where id = $1 and workspace_id = $2
+       ) as visible`,
+      [next.merchantIdOverride, input.workspaceId],
+    );
+    if (merchant.rows[0]?.visible !== true) {
+      throw new TransactionUserStateReferenceError('merchant');
+    }
+  }
+  if (input.tagIds !== undefined) {
+    if (
+      input.tagIds.length > 50 ||
+      new Set(input.tagIds).size !== input.tagIds.length ||
+      input.tagIds.some(
+        (id) =>
+          !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u.test(id),
+      )
+    ) {
+      throw new TypeError('Transaction tag IDs must be at most 50 unique canonical UUIDs.');
+    }
+    const tags = await client.query<{ visible_count: number }>(
+      `select count(*)::integer as visible_count
+       from tag where workspace_id = $1 and id = any($2::uuid[])`,
+      [input.workspaceId, input.tagIds],
+    );
+    if (tags.rows[0]?.visible_count !== input.tagIds.length) {
+      throw new TransactionUserStateReferenceError('tag');
+    }
+  }
 }
 
 async function lockState(
@@ -539,6 +600,7 @@ export class TransactionUserStateRepository {
       }
 
       const next = resolveState(current, input);
+      await validateReferences(client, input, next);
       const parameters = [
         input.transactionId,
         input.workspaceId,
@@ -613,6 +675,19 @@ export class TransactionUserStateRepository {
         throw new TransactionUserStateConflictError(
           input.expectedVersion,
           conflict.rows[0]?.version ?? actualVersion,
+        );
+      }
+
+      if (input.tagIds !== undefined) {
+        await client.query(
+          `delete from transaction_tag
+           where workspace_id = $1 and financial_transaction_id = $2`,
+          [input.workspaceId, input.transactionId],
+        );
+        await client.query(
+          `insert into transaction_tag (workspace_id, financial_transaction_id, tag_id)
+           select $1, $2, tag_id from unnest($3::uuid[]) as requested(tag_id)`,
+          [input.workspaceId, input.transactionId, input.tagIds],
         );
       }
 

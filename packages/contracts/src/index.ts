@@ -19,5 +19,19 @@ export {
   type CardBillSummary,
   type CardSummary,
 } from './account-card-contracts.js';
+export {
+  financialRoles,
+  transactionPatchSchema,
+  transactionReviewStatuses,
+  transactionSchema,
+  transactionStatuses,
+  transactionWarningSchema,
+  type FinancialRole,
+  type Transaction,
+  type TransactionPatch,
+  type TransactionReviewStatus,
+  type TransactionStatus,
+  type TransactionWarning,
+} from './transaction-contracts.js';
 
 export const packageName = '@cashcount/contracts' as const;

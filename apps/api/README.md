@@ -28,6 +28,22 @@ account/card numbers. Lists are capped at 100, all repository methods require `w
 MCP/webhook credentials cannot substitute for the web-owner credential. Bill reconciliation and
 installment routes remain reserved for PF-066 and PF-067.
 
+PF-062 exposes `GET /v1/transactions`, `GET /v1/transactions/:id`, and
+`PATCH /v1/transactions/:id` to the same web-owner boundary. Lists require a bounded `from`/`to`
+range of at most 366 days, accept allow-listed filters, and use an opaque cursor bound to those
+filters with stable `(transaction_local_date desc, id desc)` ordering. Responses include exact
+signed original and optional account-currency money, effective values with source/override state,
+owner notes/review/tags, bill and provider-replacement context, freshness, and structured
+history/currency warnings. They omit all provider/external identities and raw evidence.
+Long CPF/account/card-like digit sequences in provider descriptions are masked to last four before
+serialization.
+
+PATCH accepts only user-owned fields with explicit `SET`, `CLEAR`, or `INHERIT` semantics.
+`expectedVersion` protects state and tag replacement in one transaction; stale writes return `409`.
+Category, merchant, and tag references must be visible in the fixed workspace. Provider amounts,
+dates, descriptions, status, and identifiers are not patchable. Classification, duplicate-review,
+and transfer-link commands remain outside PF-062.
+
 PF-040's `POST /webhooks/pluggy` route retains its isolated webhook guard, accepts only
 `application/json`, and enforces a 256 KiB limit before persistence. PF-045's bounded web-owner sync
 run, dead-letter, retry, and manual-reconciliation routes now run through Fastify without expanding

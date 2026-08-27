@@ -5,7 +5,7 @@ import {
   WebhookInboxRepository,
 } from '@cashcount/db/webhook';
 import { SyncOperationalRepository } from '@cashcount/db/operational';
-import { AccountCardRepository } from '@cashcount/db/finance';
+import { AccountCardRepository, TransactionApiRepository } from '@cashcount/db/finance';
 
 import { createApiServer } from './api-server.js';
 
@@ -41,6 +41,12 @@ const server = createApiServer({
   readiness: async () => {
     await pool.query('select 1');
     return true;
+  },
+  transactions: {
+    actorId: 'service_web',
+    repository: new TransactionApiRepository(pool),
+    webToken: config.WEB_TO_API_TOKEN,
+    workspaceId: config.API_WORKSPACE_ID,
   },
   webhookSecret: config.PLUGGY_WEBHOOK_SECRET,
   workspaceId: config.API_WORKSPACE_ID,

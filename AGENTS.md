@@ -127,9 +127,13 @@ record; the versioned implementation plan is the canonical specification.
 - PF-061 adds bounded fixed-workspace web-owner reads for accounts, cards, bills, payments, and
   finance charges with exact decimal-string contracts, workspace-required repositories, and no
   provider/raw/full-number exposure. Reconciliation and installment routes remain deferred.
-- The next ticket is PF-062, which adds transaction list/detail/update endpoints. Do not imply that
-  analytics routes, end-user OAuth/session authentication, transaction endpoints, or product UI
-  exist.
+- PF-062 adds fixed-workspace web-owner transaction list/detail/update endpoints with filter-bound
+  stable cursors, exact signed money, effective provenance/override state, owner notes/review/tags,
+  bill/replacement context, structured warnings, and atomic optimistic corrections. Provider fields
+  remain immutable and private.
+- The next ticket is PF-063, which adds category, merchant, and rule endpoints. Do not imply that
+  analytics routes, end-user OAuth/session authentication, category/merchant/rule endpoints, or
+  product UI exist.
 - ADRs 0008, 0009, and 0010 define mandatory credential, workspace, provider-identity, signed-amount,
   and bill-reconciliation behavior for subsequent tickets.
 - Update this section and the root README together whenever a PF ticket or phase is completed.
