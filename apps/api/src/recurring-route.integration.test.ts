@@ -44,7 +44,7 @@ describe('recurring detector API integration', () => {
              id, workspace_id, provider, external_connection_id, external_connector_id,
              display_name, local_status, last_successful_sync_at
            ) values ($1, $2, 'PLUGGY', 'recurring-private-item', 'synthetic',
-             'Synthetic Bank', 'ACTIVE', '2026-08-27T00:00:00Z')`,
+             'Synthetic Bank', 'ACTIVE', current_timestamp)`,
           [connectionId, workspaceId],
         );
         await client.query(
@@ -53,7 +53,7 @@ describe('recurring detector API integration', () => {
              account_type, name, institution_name, currency, masked_number,
              last_successful_sync_at
            ) values ($1, $2, $3, 'PLUGGY', 'recurring-account-private', 'CHECKING',
-             'Synthetic Checking', 'Synthetic Bank', 'BRL', '1234', '2026-08-27T00:00:00Z')`,
+             'Synthetic Checking', 'Synthetic Bank', 'BRL', '1234', current_timestamp)`,
           [accountId, workspaceId, connectionId],
         );
         await client.query(
