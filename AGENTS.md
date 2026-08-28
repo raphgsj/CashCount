@@ -166,6 +166,17 @@ record; the versioned implementation plan is the canonical specification.
   and bill-reconciliation behavior for subsequent tickets.
 - Update this section and the root README together whenever a PF ticket or phase is completed.
 
+## Repository publication state
+
+- The GitHub source repository is currently public. Treat every tracked file, commit-author identity,
+  and CI output as publicly visible.
+- CashCount remains a personal-use product. Through PF-069 there is no production deployment,
+  end-user OAuth/session authentication, or product UI.
+- The root package remains `UNLICENSED`; do not add or change licensing without explicit owner
+  direction. Public visibility does not grant reuse rights.
+- Public source visibility never relaxes the prohibition on secrets or real/pseudonymized financial
+  payloads.
+
 ## Non-negotiable rules
 
 - PostgreSQL is the source of truth.

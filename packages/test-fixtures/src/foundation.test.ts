@@ -300,6 +300,8 @@ describe('repository foundation', () => {
 
     expect(readme).toContain('**Phases 0 through 6 are complete:**');
     expect(readme).toContain('**PF-070: Next.js/Auth.js foundation**');
+    expect(readme).toContain('source repository is currently public');
+    expect(readme).toContain('root package remains `UNLICENSED`');
     expect(readme).toContain('Fastify Finance API framework, service auth');
     expect(agentInstructions).toContain('## Current implementation state');
     expect(agentInstructions).toContain('Phase 0 is complete: PF-001 through PF-006.');
@@ -313,6 +315,8 @@ describe('repository foundation', () => {
     expect(agentInstructions).toContain('PF-063 adds bounded fixed-workspace web-owner category');
     expect(agentInstructions).toContain('PF-069 completes Phase 6');
     expect(agentInstructions).toContain('The next ticket is PF-070');
+    expect(agentInstructions).toContain('The GitHub source repository is currently public');
+    expect(agentInstructions).toContain('The root package remains `UNLICENSED`');
     expect(agentInstructions).toContain('Update this section and the root README together');
     expect(adrIndex).toContain('These records complete the');
     expect(adrIndex).toContain('Phase 0 decision backlog');

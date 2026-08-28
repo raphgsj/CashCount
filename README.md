@@ -1,9 +1,14 @@
 # CashCount
 
-CashCount is a private personal-finance intelligence platform. The target system imports the
+CashCount is a personal-use financial-intelligence platform. The target system imports the
 owner's financial data through a provider adapter, preserves normalized history in PostgreSQL,
 and exposes deterministic analytics to an authenticated web application and a read-only MCP
 server.
+
+The source repository is currently public to support development and tool access. The intended
+deployed product and all financial data remain private, and the repository contains no production
+secrets or real/pseudonymized financial payloads. The root package remains `UNLICENSED`; public
+visibility does not grant reuse rights or mean that the product is deployed or operational.
 
 **Phases 0 through 6 are complete:**
 
@@ -191,16 +196,16 @@ server.
   commitments twice.
 
 PF-003 through PF-006 are architecture-documentation milestones; executable implementation now
-extends through Phase 5's infrastructure, database, provider/import, queue/worker, classification,
-and regression-test boundaries plus Phase 6's Fastify account/card, transaction, classification-
-management, spending/cash-flow analytics, period comparison, bill reconciliation, installment
-commitments, recurring-expense detection, anomaly candidates, and month-forecast API.
+covers Phases 0 through 6, including infrastructure, database, provider/import, queue/worker,
+classification, regression-test boundaries, and the Fastify account/card, transaction,
+classification-management, spending/cash-flow analytics, period-comparison, bill-reconciliation,
+installment-commitment, recurring-expense, anomaly-candidate, and month-forecast API surfaces.
 The persistent worker currently claims its implemented `PROCESS_WEBHOOK` and `SYNC_CONNECTION` job
 types; scheduled reconciliation remains an independent terminating command, and other future queue
 job handlers are not yet registered. The repository intentionally contains no end-user OAuth/session
 authentication, product UI, or production secrets.
-Transaction classification/duplicate/transfer commands and account/card installment/reconciliation
-workflows remain reserved for their later tickets. The next ticket is
+End-user UI workflows for transaction classification/duplicate/transfer review and account/card
+installment/reconciliation remain reserved for Phase 7. The next ticket is
 **PF-070: Next.js/Auth.js foundation**, which starts Phase 7.
 
 The accepted decisions are indexed in [`docs/adr/`](docs/adr/README.md). In particular, ADRs 0008
@@ -264,8 +269,9 @@ nonzero after all eligible connections have been attempted. Intended local execu
 `0 2,10,15,21 * * *`; verify the local-time mapping at deployment and do not depend on exact-minute
 execution.
 
-The integration gate creates a temporary empty PostgreSQL database, applies migrations twice to
-prove idempotence, verifies the migration journal, and removes the temporary database.
+The integration gate creates isolated temporary PostgreSQL databases, applies migrations twice to
+prove idempotence, verifies the migration journal, exercises database-backed application behavior,
+and removes the temporary databases.
 
 Every application validates its environment at startup through `@cashcount/config`. Production
 rejects the local database fallback, rejects the development authentication bypass, and detects
@@ -282,20 +288,20 @@ the web credential.
 
 ```text
 apps/
-  web/        configuration-validated shell; future Next.js web application
-  api/        Fastify Finance API framework, service auth, health, webhook, and sync operations
-  worker/     configuration-validated shell; future durable background worker
-  mcp/        configuration-validated shell; future read-only MCP service
+  web/        configuration-validated shell; PF-070 Next.js/Auth.js application is next
+  api/        Fastify Finance API framework, service auth, webhook/operations, and Phase 6 reads
+  worker/     provider import, webhook jobs, persistent queue runtime, and reconciliation commands
+  mcp/        configuration-validated shell reserved for the Phase 8 read-only MCP service
 packages/
   config/     validated environment and shared configuration
-  contracts/  shell for future runtime schemas and public types
-  db/         Drizzle schema, migrations, and canonical financial query views; future repositories
-  domain/     exact money/date types and provider-neutral transaction policy
-  provider-core/    provider-neutral adapter shell
-  provider-pluggy/  Pluggy adapter shell
-  classification/   classification shell
-  analytics/        deterministic analytics shell
-  observability/    logging and metrics shell
+  contracts/  strict account/card, transaction, classification, and analytics API schemas
+  db/         Drizzle schema/migrations, encryption, scoped repositories, queues, and canonical views
+  domain/     exact money/date, transaction, replacement, and financial-role policy
+  provider-core/    strict provider-neutral runtime contracts and adapter interface
+  provider-pluggy/  authenticated Pluggy client, neutral mapping, lifecycle, and webhook schemas
+  classification/   description normalization, merchant similarity, strict rule DSL, and evaluation
+  analytics/        deterministic spending, comparison, commitment, anomaly, and forecast queries
+  observability/    structured redacted logging foundation
   test-fixtures/    repository/configuration regression tests and sanitized provider fixtures
 ```
 
