@@ -298,10 +298,8 @@ describe('repository foundation', () => {
     const agentInstructions = readFileSync(join(repositoryRoot, 'AGENTS.md'), 'utf8');
     const adrIndex = readFileSync(join(repositoryRoot, 'docs', 'adr', 'README.md'), 'utf8');
 
-    expect(readme).toContain(
-      '**Phases 0 through 5 are complete; Phase 6 is in progress through PF-063:**',
-    );
-    expect(readme).toContain('**PF-064: Spending and cash-flow analytics**');
+    expect(readme).toContain('**Phases 0 through 6 are complete:**');
+    expect(readme).toContain('**PF-070: Next.js/Auth.js foundation**');
     expect(readme).toContain('Fastify Finance API framework, service auth');
     expect(agentInstructions).toContain('## Current implementation state');
     expect(agentInstructions).toContain('Phase 0 is complete: PF-001 through PF-006.');
@@ -313,7 +311,8 @@ describe('repository foundation', () => {
     expect(agentInstructions).toContain('PF-061 adds bounded fixed-workspace web-owner reads');
     expect(agentInstructions).toContain('PF-062 adds fixed-workspace web-owner transaction');
     expect(agentInstructions).toContain('PF-063 adds bounded fixed-workspace web-owner category');
-    expect(agentInstructions).toContain('The next ticket is PF-064');
+    expect(agentInstructions).toContain('PF-069 completes Phase 6');
+    expect(agentInstructions).toContain('The next ticket is PF-070');
     expect(agentInstructions).toContain('Update this section and the root README together');
     expect(adrIndex).toContain('These records complete the');
     expect(adrIndex).toContain('Phase 0 decision backlog');
